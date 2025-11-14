@@ -1,0 +1,1128 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Ticket House API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/BannerManagement/GetAllBanners": {
+      "get": {
+        "tags": [
+          "BannerManagement"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectIEnumerableCommonResponseModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectIEnumerableCommonResponseModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectIEnumerableCommonResponseModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/BannerManagement/GetBannerById/{bannerId}": {
+      "get": {
+        "tags": [
+          "BannerManagement"
+        ],
+        "parameters": [
+          {
+            "name": "bannerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectCommonResponseModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectCommonResponseModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectCommonResponseModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/BannerManagement/CreateBanner": {
+      "post": {
+        "tags": [
+          "BannerManagement"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBannerRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBannerRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBannerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Int32CommonResponseModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Int32CommonResponseModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Int32CommonResponseModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/BannerManagement/UpdateBanner/{bannerId}": {
+      "post": {
+        "tags": [
+          "BannerManagement"
+        ],
+        "parameters": [
+          {
+            "name": "bannerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBannerRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBannerRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBannerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanCommonResponseModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanCommonResponseModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanCommonResponseModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/BannerManagement/DeleteBanner/{bannerId}": {
+      "post": {
+        "tags": [
+          "BannerManagement"
+        ],
+        "parameters": [
+          {
+            "name": "bannerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanCommonResponseModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanCommonResponseModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanCommonResponseModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Login/SignUp": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignUpRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignUpRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignUpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Login/Login": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Login/GenerateOTP": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateOTPRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateOTPRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateOTPRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OTPResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OTPResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OTPResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Login/VerifyOTP": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOTPRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOTPRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOTPRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringCommonResponseModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringCommonResponseModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringCommonResponseModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Login/ResendOTP": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendOTPRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendOTPRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendOTPRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendOTPResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendOTPResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendOTPResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Login/GoogleSignIn": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleSSORequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleSSORequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleSSORequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Login/RefreshToken": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringCommonResponseModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringCommonResponseModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringCommonResponseModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Login/Logout": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringCommonResponseModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringCommonResponseModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringCommonResponseModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/WeatherForecast": {
+      "get": {
+        "tags": [
+          "WeatherForecast"
+        ],
+        "operationId": "GetWeatherForecast",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeatherForecast"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeatherForecast"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeatherForecast"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BooleanCommonResponseModel": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateBannerRequest": {
+        "type": "object",
+        "properties": {
+          "banner_img": {
+            "type": "string",
+            "nullable": true
+          },
+          "action_link_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_by": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GenerateOTPRequest": {
+        "type": "object",
+        "properties": {
+          "contact_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "country_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "newUser": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GoogleSSORequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "google_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "first_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Int32CommonResponseModel": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "#/components/schemas/StringCommonResponseModel"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token": {
+            "type": "string",
+            "nullable": true
+          },
+          "refresh_token": {
+            "type": "string",
+            "nullable": true
+          },
+          "token_expiry": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "refresh_token_expiry": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "user_role": {
+            "type": "string",
+            "nullable": true
+          },
+          "first_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "country_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "profile_img": {
+            "type": "string",
+            "nullable": true
+          },
+          "role_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "is_otp_required": {
+            "type": "boolean"
+          },
+          "validationotp_id": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "tempToken": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OTPResponse": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "#/components/schemas/StringCommonResponseModel"
+          },
+          "validationotp_id": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ObjectCommonResponseModel": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ObjectIEnumerableCommonResponseModel": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": { },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResendOTPRequest": {
+        "type": "object",
+        "properties": {
+          "otp_id": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResendOTPResponse": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "#/components/schemas/StringCommonResponseModel"
+          },
+          "new_otp_id": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SignUpRequest": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "country_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          },
+          "role_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "org_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "org_start_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "bank_account_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "bank_ifsc": {
+            "type": "string",
+            "nullable": true
+          },
+          "bank_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "beneficiary_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "aadhar_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "pancard_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner_personal_email": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner_mobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "gst_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "instagram_link": {
+            "type": "string",
+            "nullable": true
+          },
+          "youtube_link": {
+            "type": "string",
+            "nullable": true
+          },
+          "facebook_link": {
+            "type": "string",
+            "nullable": true
+          },
+          "twitter_link": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "StringCommonResponseModel": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateBannerRequest": {
+        "type": "object",
+        "properties": {
+          "banner_img": {
+            "type": "string",
+            "nullable": true
+          },
+          "action_link_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "updated_by": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyOTPRequest": {
+        "type": "object",
+        "properties": {
+          "otp_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "otp": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "contact_type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeatherForecast": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "temperatureC": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "temperatureF": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "apiKey",
+        "description": "JWT Authorization header using the Bearer scheme",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "Bearer": [ ]
+    }
+  ]
+}

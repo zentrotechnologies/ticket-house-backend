@@ -1,0 +1,12 @@
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\bin\Debug\net8.0\MODEL.deps.json
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\bin\Debug\net8.0\MODEL.dll
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\bin\Debug\net8.0\MODEL.pdb
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\obj\Debug\net8.0\MODEL.csproj.AssemblyReference.cache
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\obj\Debug\net8.0\MODEL.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\obj\Debug\net8.0\MODEL.AssemblyInfoInputs.cache
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\obj\Debug\net8.0\MODEL.AssemblyInfo.cs
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\obj\Debug\net8.0\MODEL.csproj.CoreCompileInputs.cache
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\obj\Debug\net8.0\MODEL.dll
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\obj\Debug\net8.0\refint\MODEL.dll
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\obj\Debug\net8.0\MODEL.pdb
+C:\Users\pranj\source\repos\Zentro\TicketHouse\TicketHouseBackend\TicketHouseBackend\MODEL\obj\Debug\net8.0\ref\MODEL.dll

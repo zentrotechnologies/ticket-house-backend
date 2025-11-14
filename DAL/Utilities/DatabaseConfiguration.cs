@@ -1,0 +1,18 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DAL.Utilities
+{
+    public class DatabaseConfiguration
+    {
+        public static string DB_SCHEMA = "public.";
+        public static string Users = DB_SCHEMA + "users";
+        public static string EventOrganizer = DB_SCHEMA + "event_organizer";
+        public static string OtpVerification = DB_SCHEMA + "otp_verification";
+        public static string RoleMaster = DB_SCHEMA + "role_master";
+        public static string BannerManagement = DB_SCHEMA + "banner_management";
+    }
+}
