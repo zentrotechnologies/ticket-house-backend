@@ -1,0 +1,136 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{46F7BEDB-57A9-4552-83FF-6775365CCDFA}|MODEL\\MODEL.csproj|c:\\users\\pranj\\source\\repos\\tickethouse\\tickethousebackend\\model\\response\\commonresponsemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{46F7BEDB-57A9-4552-83FF-6775365CCDFA}|MODEL\\MODEL.csproj|solutionrelative:model\\response\\commonresponsemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{03388DC0-8D87-48CD-BAB1-543BC8F2863A}|DAL\\DAL.csproj|c:\\users\\pranj\\source\\repos\\tickethouse\\tickethousebackend\\dal\\utilities\\thdbconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{03388DC0-8D87-48CD-BAB1-543BC8F2863A}|DAL\\DAL.csproj|solutionrelative:dal\\utilities\\thdbconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{03388DC0-8D87-48CD-BAB1-543BC8F2863A}|DAL\\DAL.csproj|c:\\users\\pranj\\source\\repos\\tickethouse\\tickethousebackend\\dal\\utilities\\databaseconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{03388DC0-8D87-48CD-BAB1-543BC8F2863A}|DAL\\DAL.csproj|solutionrelative:dal\\utilities\\databaseconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{46F7BEDB-57A9-4552-83FF-6775365CCDFA}|MODEL\\MODEL.csproj|c:\\users\\pranj\\source\\repos\\tickethouse\\tickethousebackend\\model\\configuration\\thconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{46F7BEDB-57A9-4552-83FF-6775365CCDFA}|MODEL\\MODEL.csproj|solutionrelative:model\\configuration\\thconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D9146A7C-BD58-4018-BF79-31F6C4663687}|TicketHouseBackend\\TicketHouseBackend.csproj|c:\\users\\pranj\\source\\repos\\tickethouse\\tickethousebackend\\tickethousebackend\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D9146A7C-BD58-4018-BF79-31F6C4663687}|TicketHouseBackend\\TicketHouseBackend.csproj|solutionrelative:tickethousebackend\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D9146A7C-BD58-4018-BF79-31F6C4663687}|TicketHouseBackend\\TicketHouseBackend.csproj|c:\\users\\pranj\\source\\repos\\tickethouse\\tickethousebackend\\tickethousebackend\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{D9146A7C-BD58-4018-BF79-31F6C4663687}|TicketHouseBackend\\TicketHouseBackend.csproj|solutionrelative:tickethousebackend\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 5,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\TicketHouseBackend\\appsettings.json",
+              "RelativeDocumentMoniker": "TicketHouseBackend\\appsettings.json",
+              "ToolTip": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\TicketHouseBackend\\appsettings.json",
+              "RelativeToolTip": "TicketHouseBackend\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-11-14T19:19:15.083Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\TicketHouseBackend\\Program.cs",
+              "RelativeDocumentMoniker": "TicketHouseBackend\\Program.cs",
+              "ToolTip": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\TicketHouseBackend\\Program.cs",
+              "RelativeToolTip": "TicketHouseBackend\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-14T19:19:19.039Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "THConfiguration.cs",
+              "DocumentMoniker": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\MODEL\\Configuration\\THConfiguration.cs",
+              "RelativeDocumentMoniker": "MODEL\\Configuration\\THConfiguration.cs",
+              "ToolTip": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\MODEL\\Configuration\\THConfiguration.cs",
+              "RelativeToolTip": "MODEL\\Configuration\\THConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-14T19:19:23.55Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DatabaseConfiguration.cs",
+              "DocumentMoniker": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\DAL\\Utilities\\DatabaseConfiguration.cs",
+              "RelativeDocumentMoniker": "DAL\\Utilities\\DatabaseConfiguration.cs",
+              "ToolTip": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\DAL\\Utilities\\DatabaseConfiguration.cs",
+              "RelativeToolTip": "DAL\\Utilities\\DatabaseConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-14T19:19:29.336Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "THDBConnection.cs",
+              "DocumentMoniker": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\DAL\\Utilities\\THDBConnection.cs",
+              "RelativeDocumentMoniker": "DAL\\Utilities\\THDBConnection.cs",
+              "ToolTip": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\DAL\\Utilities\\THDBConnection.cs",
+              "RelativeToolTip": "DAL\\Utilities\\THDBConnection.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-14T19:19:32.077Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "CommonResponseModel.cs",
+              "DocumentMoniker": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\MODEL\\Response\\CommonResponseModel.cs",
+              "RelativeDocumentMoniker": "MODEL\\Response\\CommonResponseModel.cs",
+              "ToolTip": "C:\\Users\\pranj\\source\\repos\\TicketHouse\\TicketHouseBackend\\MODEL\\Response\\CommonResponseModel.cs",
+              "RelativeToolTip": "MODEL\\Response\\CommonResponseModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-14T19:19:41.065Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
