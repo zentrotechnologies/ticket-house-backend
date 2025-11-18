@@ -14,5 +14,7 @@ namespace DAL.Utilities
         public static string OtpVerification = DB_SCHEMA + "otp_verification";
         public static string RoleMaster = DB_SCHEMA + "role_master";
         public static string BannerManagement = DB_SCHEMA + "banner_management";
+        public static string testimonial = DB_SCHEMA + "testimonial";
+        public static string event_category = DB_SCHEMA + "event_category";
     }
 }
