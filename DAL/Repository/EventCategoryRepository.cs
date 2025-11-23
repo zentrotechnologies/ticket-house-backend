@@ -1,6 +1,7 @@
 ﻿using DAL.Utilities;
 using Dapper;
 using MODEL.Entities;
+using MODEL.Request;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,7 @@ namespace DAL.Repository
         Task<int> AddEventCategoryAsync(EventCategoryModel eventCategory);
         Task<int> UpdateEventCategoryAsync(EventCategoryModel eventCategory);
         Task<int> DeleteEventCategoryAsync(int eventCategoryId, string updatedBy);
+        Task<(int TotalPages, IEnumerable<EventCategoryModel> Data)> GetPaginatedEventCategoryByUserIdAsync(UserIdRequest request);
     }
     public class EventCategoryRepository: IEventCategoryRepository
     {
@@ -144,6 +146,68 @@ namespace DAL.Repository
             });
 
             return affectedRows;
+        }
+
+        public async Task<(int TotalPages, IEnumerable<EventCategoryModel> Data)> GetPaginatedEventCategoryByUserIdAsync(UserIdRequest request)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            var offset = (request.PageNumber - 1) * request.PageSize;
+
+            // Build the base SQL queries
+            var sql = new StringBuilder($@"
+                SELECT * 
+                FROM {event_category} 
+                WHERE active = 1 AND created_by = @UserId");
+
+            var countSql = new StringBuilder($@"
+                SELECT COUNT(*) 
+                FROM {event_category} 
+                WHERE active = 1 AND created_by = @UserId");
+
+            var parameters = new DynamicParameters();
+            parameters.Add("UserId", request.user_id);
+            parameters.Add("Offset", offset);
+            parameters.Add("PageSize", request.PageSize);
+
+            // Apply filters if provided - simplified inline approach
+            if (!string.IsNullOrWhiteSpace(request.FilterText))
+            {
+                string filterCondition;
+                string filterPattern = $"%{request.FilterText.ToLower()}%";
+
+                // Determine filter condition based on filter type
+                if (string.IsNullOrWhiteSpace(request.FilterType))
+                {
+                    filterCondition = " AND (LOWER(event_category_name) LIKE @FilterPattern OR LOWER(event_category_desc) LIKE @FilterPattern)";
+                }
+                else
+                {
+                    filterCondition = request.FilterType.ToLower() switch
+                    {
+                        "name" => " AND LOWER(event_category_name) LIKE @FilterPattern",
+                        "description" => " AND LOWER(event_category_desc) LIKE @FilterPattern",
+                        _ => " AND (LOWER(event_category_name) LIKE @FilterPattern OR LOWER(event_category_desc) LIKE @FilterPattern)"
+                    };
+                }
+
+                sql.Append(filterCondition);
+                countSql.Append(filterCondition);
+                parameters.Add("FilterPattern", filterPattern);
+            }
+
+            // Add ordering and pagination
+            sql.Append(" ORDER BY event_category_id DESC ");
+            sql.Append(" OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY");
+
+            // Get total count
+            var totalCount = await connection.ExecuteScalarAsync<int>(countSql.ToString(), parameters);
+            var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+
+            // Get paginated data
+            var data = await connection.QueryAsync<EventCategoryModel>(sql.ToString(), parameters);
+
+            return (totalPages, data);
         }
     }
 }

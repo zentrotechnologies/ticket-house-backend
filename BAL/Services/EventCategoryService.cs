@@ -1,5 +1,6 @@
 ﻿using DAL.Repository;
 using MODEL.Entities;
+using MODEL.Request;
 using MODEL.Response;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ namespace BAL.Services
         Task<CommonResponseModel<EventCategoryModel>> AddEventCategoryAsync(EventCategoryModel eventCategory);
         Task<CommonResponseModel<EventCategoryModel>> UpdateEventCategoryAsync(EventCategoryModel eventCategory);
         Task<CommonResponseModel<EventCategoryModel>> DeleteEventCategoryAsync(int eventCategoryId, string updatedBy);
+        Task<PagedResponse<IEnumerable<EventCategoryModel>>> GetPaginatedEventCategoryByUserIdAsync(UserIdRequest request);
     }
     public class EventCategoryService: IEventCategoryService
     {
@@ -202,6 +204,63 @@ namespace BAL.Services
                 response.Status = "Failure";
                 response.Message = $"Error deleting event category: {ex.Message}";
                 response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<PagedResponse<IEnumerable<EventCategoryModel>>> GetPaginatedEventCategoryByUserIdAsync(UserIdRequest request)
+        {
+            var response = new PagedResponse<IEnumerable<EventCategoryModel>>();
+
+            try
+            {
+                // Validate request - simplified inline validation
+                if (string.IsNullOrWhiteSpace(request.user_id))
+                {
+                    return new PagedResponse<IEnumerable<EventCategoryModel>>
+                    {
+                        Status = "Failure",
+                        Message = "User ID is required",
+                        ErrorCode = "400",
+                        CurrentPage = request.PageNumber,
+                        PageSize = request.PageSize,
+                        TotalPages = 0
+                    };
+                }
+
+                // Validate UUID format inline
+                if (!Guid.TryParse(request.user_id, out _))
+                {
+                    return new PagedResponse<IEnumerable<EventCategoryModel>>
+                    {
+                        Status = "Failure",
+                        Message = "Invalid User ID format",
+                        ErrorCode = "400",
+                        CurrentPage = request.PageNumber,
+                        PageSize = request.PageSize,
+                        TotalPages = 0
+                    };
+                }
+
+                var (totalPages, data) = await _eventCategoryRepository.GetPaginatedEventCategoryByUserIdAsync(request);
+
+                response.Status = "Success";
+                response.Message = "Paginated event categories by user ID retrieved successfully";
+                response.ErrorCode = "0";
+                response.TotalPages = totalPages;
+                response.CurrentPage = request.PageNumber;
+                response.PageSize = request.PageSize;
+                response.Data = data;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error retrieving paginated event categories by user ID: {ex.Message}";
+                response.ErrorCode = "1";
+                response.TotalPages = 0;
+                response.CurrentPage = request.PageNumber;
+                response.PageSize = request.PageSize;
             }
 
             return response;

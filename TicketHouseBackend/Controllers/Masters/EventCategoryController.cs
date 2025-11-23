@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MODEL.Entities;
+using MODEL.Request;
 using MODEL.Response;
 
 namespace TicketHouseBackend.Controllers.Masters
@@ -160,6 +161,46 @@ namespace TicketHouseBackend.Controllers.Masters
                     ErrorCode = "1",
                     Status = "Error",
                     Message = ex.Message
+                };
+            }
+        }
+
+        [HttpPost("GetPaginatedEventCategoryByUserId")]
+        public async Task<PagedResponse<IEnumerable<EventCategoryModel>>> GetPaginatedEventCategoryByUserId([FromBody] UserIdRequest request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return new PagedResponse<IEnumerable<EventCategoryModel>>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Request data is required",
+                        Data = null,
+                        TotalPages = 0,
+                        CurrentPage = 0,
+                        PageSize = 0
+                    };
+                }
+
+                // Validate and set default pagination parameters inline
+                if (request.PageNumber <= 0) request.PageNumber = 1;
+                if (request.PageSize <= 0) request.PageSize = 10;
+
+                return await _eventCategoryService.GetPaginatedEventCategoryByUserIdAsync(request);
+            }
+            catch (Exception ex)
+            {
+                return new PagedResponse<IEnumerable<EventCategoryModel>>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message,
+                    Data = null,
+                    TotalPages = 0,
+                    CurrentPage = request?.PageNumber ?? 0,
+                    PageSize = request?.PageSize ?? 0
                 };
             }
         }
