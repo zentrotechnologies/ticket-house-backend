@@ -16,5 +16,7 @@ namespace DAL.Utilities
         public static string BannerManagement = DB_SCHEMA + "banner_management";
         public static string testimonial = DB_SCHEMA + "testimonial";
         public static string event_category = DB_SCHEMA + "event_category";
+        public static string events = DB_SCHEMA + "events";
+        public static string event_media = DB_SCHEMA + "event_media";
     }
 }

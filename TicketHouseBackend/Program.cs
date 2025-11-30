@@ -2,6 +2,7 @@ using BAL.Services;
 using DAL.Repository;
 using DAL.Utilities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MODEL.Configuration;
@@ -50,21 +51,23 @@ builder.Services.AddSingleton(thConfig);
 // Database
 builder.Services.AddScoped<ITHDBConnection, THDBConnection>();
 builder.Services.AddScoped<IEncryptionDecryption, EncryptionDecryption>();
-builder.Services.AddScoped<IBannerManagementRepository, BannerManagementRepository>();
 
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ILoginRepository, LoginRepository>();
-builder.Services.AddScoped<IBannerManagementService, BannerManagementService>();
+builder.Services.AddScoped<IBannerManagementRepository, BannerManagementRepository>();
 builder.Services.AddScoped<ITestimonialRepository, TestimonialRepository>();
 builder.Services.AddScoped<IEventCategoryRepository, EventCategoryRepository>();
+builder.Services.AddScoped<IEventDetailsRepository, EventDetailsRepository>();
 
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IOTPAuthService, OTPAuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IBannerManagementService, BannerManagementService>();
 builder.Services.AddScoped<ITestimonialService, TestimonialService>();
 builder.Services.AddScoped<IEventCategoryService, EventCategoryService>();
+builder.Services.AddScoped<IEventDetailsService, EventDetailsService>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -114,6 +117,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseStaticFiles();
+
+// If you want to serve files from other directories, add this:
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "Assets")),
+    RequestPath = "/Assets"
+});
 
 app.MapControllers();
 
