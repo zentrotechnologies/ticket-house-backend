@@ -18,6 +18,7 @@ namespace BAL.Services
         Task<CommonResponseModel<EventCategoryModel>> UpdateEventCategoryAsync(EventCategoryModel eventCategory);
         Task<CommonResponseModel<EventCategoryModel>> DeleteEventCategoryAsync(int eventCategoryId, string updatedBy);
         Task<PagedResponse<IEnumerable<EventCategoryModel>>> GetPaginatedEventCategoryByUserIdAsync(UserIdRequest request);
+        Task<CommonResponseModel<bool>> UpdateEventCategoryStatusAsync(int eventCategoryId, int active, string updatedBy);
     }
     public class EventCategoryService: IEventCategoryService
     {
@@ -261,6 +262,75 @@ namespace BAL.Services
                 response.TotalPages = 0;
                 response.CurrentPage = request.PageNumber;
                 response.PageSize = request.PageSize;
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<bool>> UpdateEventCategoryStatusAsync(int eventCategoryId, int active, string updatedBy)
+        {
+            var response = new CommonResponseModel<bool>();
+
+            try
+            {
+                // Validate input
+                if (eventCategoryId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid event category ID is required";
+                    response.ErrorCode = "400";
+                    response.Data = false;
+                    return response;
+                }
+
+                if (active != 1 && active != 2)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Active status must be 1 (Active) or 2 (Inactive)";
+                    response.ErrorCode = "400";
+                    response.Data = false;
+                    return response;
+                }
+
+                if (string.IsNullOrEmpty(updatedBy))
+                {
+                    response.Status = "Failure";
+                    response.Message = "Updated by user is required";
+                    response.ErrorCode = "400";
+                    response.Data = false;
+                    return response;
+                }
+
+                var result = await _eventCategoryRepository.UpdateEventCategoryStatusAsync(eventCategoryId, active, updatedBy);
+
+                if (result == -1)
+                {
+                    response.Status = "Success";
+                    response.Message = "Event category status is already the same.";
+                    response.ErrorCode = "0";
+                    response.Data = false;
+                }
+                else if (result > 0)
+                {
+                    response.Status = "Success";
+                    response.Message = $"Event category {(active == 1 ? "activated" : "deactivated")} successfully.";
+                    response.ErrorCode = "0";
+                    response.Data = true;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "No event category found with the provided ID.";
+                    response.ErrorCode = "404";
+                    response.Data = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Error";
+                response.Message = $"Error updating event category status: {ex.Message}";
+                response.ErrorCode = "1";
+                response.Data = false;
             }
 
             return response;

@@ -2,6 +2,7 @@ using BAL.Services;
 using DAL.Repository;
 using DAL.Utilities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -69,6 +70,15 @@ builder.Services.AddScoped<ITestimonialService, TestimonialService>();
 builder.Services.AddScoped<IEventCategoryService, EventCategoryService>();
 builder.Services.AddScoped<IEventDetailsService, EventDetailsService>();
 
+// Configure form options for file uploads
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10485760; // 10MB limit
+});
+
+// Add IWebHostEnvironment
+builder.Services.AddSingleton<IWebHostEnvironment>(builder.Environment);
+
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -110,21 +120,33 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAngular");
-
-app.UseAuthentication();
-
-app.UseAuthorization();
-
-app.UseStaticFiles();
-
-// If you want to serve files from other directories, add this:
+// IMPORTANT: Configure static files to serve from Assets folder
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
         Path.Combine(builder.Environment.ContentRootPath, "Assets")),
     RequestPath = "/Assets"
 });
+
+// Enable directory browsing for debugging (optional)
+if (app.Environment.IsDevelopment())
+{
+    app.UseDirectoryBrowser(new DirectoryBrowserOptions
+    {
+        FileProvider = new PhysicalFileProvider(
+            Path.Combine(builder.Environment.ContentRootPath, "Assets")),
+        RequestPath = "/Assets"
+    });
+}
+
+
+app.UseCors("AllowAngular");
+
+app.UseAuthentication();
+
+app.UseAuthorization();
+
+//app.UseStaticFiles();
 
 app.MapControllers();
 

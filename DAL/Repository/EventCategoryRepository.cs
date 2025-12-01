@@ -18,6 +18,7 @@ namespace DAL.Repository
         Task<int> UpdateEventCategoryAsync(EventCategoryModel eventCategory);
         Task<int> DeleteEventCategoryAsync(int eventCategoryId, string updatedBy);
         Task<(int TotalPages, IEnumerable<EventCategoryModel> Data)> GetPaginatedEventCategoryByUserIdAsync(UserIdRequest request);
+        Task<int> UpdateEventCategoryStatusAsync(int eventCategoryId, int active, string updatedBy);
     }
     public class EventCategoryRepository: IEventCategoryRepository
     {
@@ -34,7 +35,7 @@ namespace DAL.Repository
             using var connection = _dbConnection.GetConnection();
             var query = $@"
                 SELECT * FROM {event_category} 
-                WHERE active = 1 
+                WHERE active IN (1,2) 
                 ORDER BY event_category_id DESC";
 
             return await connection.QueryAsync<EventCategoryModel>(query);
@@ -45,7 +46,7 @@ namespace DAL.Repository
             using var connection = _dbConnection.GetConnection();
             var query = $@"
                 SELECT * FROM {event_category} 
-                WHERE event_category_id = @EventCategoryId AND active = 1";
+                WHERE event_category_id = @EventCategoryId AND active IN (1,2)";
 
             return await connection.QueryFirstOrDefaultAsync<EventCategoryModel>(query, new { EventCategoryId = eventCategoryId });
         }
@@ -97,7 +98,7 @@ namespace DAL.Repository
                 SELECT COUNT(*) FROM {event_category} 
                 WHERE LOWER(event_category_name) = LOWER(@event_category_name) 
                 AND event_category_id != @event_category_id 
-                AND active = 1";
+                AND active IN (1,2)";
 
             var exists = await connection.ExecuteScalarAsync<int>(checkQuery, new
             {
@@ -116,7 +117,7 @@ namespace DAL.Repository
                     event_category_desc = @event_category_desc,
                     updated_by = @updated_by,
                     updated_on = CURRENT_TIMESTAMP
-                WHERE event_category_id = @event_category_id AND active = 1";
+                WHERE event_category_id = @event_category_id AND active IN (1,2)";
 
             var affectedRows = await connection.ExecuteAsync(query, new
             {
@@ -137,7 +138,7 @@ namespace DAL.Repository
                 SET active = 0,
                     updated_by = @updated_by,
                     updated_on = CURRENT_TIMESTAMP
-                WHERE event_category_id = @event_category_id AND active = 1";
+                WHERE event_category_id = @event_category_id AND active IN (1,2)";
 
             var affectedRows = await connection.ExecuteAsync(query, new
             {
@@ -158,12 +159,12 @@ namespace DAL.Repository
             var sql = new StringBuilder($@"
                 SELECT * 
                 FROM {event_category} 
-                WHERE active = 1 AND created_by = @UserId");
+                WHERE active IN (1,2) AND created_by = @UserId");
 
             var countSql = new StringBuilder($@"
                 SELECT COUNT(*) 
                 FROM {event_category} 
-                WHERE active = 1 AND created_by = @UserId");
+                WHERE active IN (1,2) AND created_by = @UserId");
 
             var parameters = new DynamicParameters();
             parameters.Add("UserId", request.user_id);
@@ -208,6 +209,40 @@ namespace DAL.Repository
             var data = await connection.QueryAsync<EventCategoryModel>(sql.ToString(), parameters);
 
             return (totalPages, data);
+        }
+
+        public async Task<int> UpdateEventCategoryStatusAsync(int eventCategoryId, int active, string updatedBy)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            // Check if the status is already the same
+            var checkQuery = $@"
+            SELECT active 
+            FROM {event_category} 
+            WHERE event_category_id = @EventCategoryId AND active IN (1,2)";
+
+            var currentStatus = await connection.ExecuteScalarAsync<int?>(checkQuery, new { EventCategoryId = eventCategoryId });
+
+            if (currentStatus == active)
+            {
+                return -1; // Status is already the same
+            }
+
+            var updateQuery = $@"
+            UPDATE {event_category} 
+            SET active = @Active,
+                updated_by = @UpdatedBy,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE event_category_id = @EventCategoryId AND active IN (1,2)";
+
+            var affectedRows = await connection.ExecuteAsync(updateQuery, new
+            {
+                EventCategoryId = eventCategoryId,
+                Active = active,
+                UpdatedBy = updatedBy
+            });
+
+            return affectedRows;
         }
     }
 }

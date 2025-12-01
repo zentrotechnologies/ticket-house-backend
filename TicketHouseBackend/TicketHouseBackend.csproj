@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <Folder Include="Assets\event_media\" />
+    <Folder Include="Assets\Testimonial_Profile\" />
   </ItemGroup>
 
 </Project>

@@ -137,7 +137,7 @@ namespace TicketHouseBackend.Controllers.Masters
         }
 
         [HttpPost("DeleteEventCategory/{eventCategoryId}")]
-        public async Task<CommonResponseModel<EventCategoryModel>> DeleteEventCategory(int eventCategoryId, [FromBody] string updatedBy = null)
+        public async Task<CommonResponseModel<EventCategoryModel>> DeleteEventCategory(int eventCategoryId, [FromQuery] string updatedBy = null)
         {
             try
             {
@@ -201,6 +201,73 @@ namespace TicketHouseBackend.Controllers.Masters
                     TotalPages = 0,
                     CurrentPage = request?.PageNumber ?? 0,
                     PageSize = request?.PageSize ?? 0
+                };
+            }
+        }
+
+        [HttpPost("UpdateEventCategoryStatus")]
+        public async Task<CommonResponseModel<bool>> UpdateEventCategoryStatus([FromBody] UpdateEventCategoryStatusRequest request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return new CommonResponseModel<bool>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Request data is required",
+                        Data = false
+                    };
+                }
+
+                if (request.event_category_id <= 0)
+                {
+                    return new CommonResponseModel<bool>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Valid event category ID is required",
+                        Data = false
+                    };
+                }
+
+                if (request.active != 1 && request.active != 2)
+                {
+                    return new CommonResponseModel<bool>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Active status must be 1 (Active) or 2 (Inactive)",
+                        Data = false
+                    };
+                }
+
+                if (string.IsNullOrEmpty(request.updated_by))
+                {
+                    return new CommonResponseModel<bool>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Updated by user is required",
+                        Data = false
+                    };
+                }
+
+                return await _eventCategoryService.UpdateEventCategoryStatusAsync(
+                    request.event_category_id,
+                    request.active,
+                    request.updated_by
+                );
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<bool>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message,
+                    Data = false
                 };
             }
         }

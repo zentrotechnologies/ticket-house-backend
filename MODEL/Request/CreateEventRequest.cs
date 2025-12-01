@@ -12,4 +12,12 @@ namespace MODEL.Request
         public EventDetailsModel EventDetails { get; set; }
         public List<EventMediaModel> EventMedia { get; set; }
     }
+
+    //event category
+    public class UpdateEventCategoryStatusRequest
+    {
+        public int event_category_id { get; set; }
+        public int active { get; set; }
+        public string updated_by { get; set; }
+    }
 }

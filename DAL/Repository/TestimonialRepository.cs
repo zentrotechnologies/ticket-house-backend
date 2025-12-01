@@ -16,6 +16,7 @@ namespace DAL.Repository
         Task<int> AddTestimonialAsync(TestimonialModel testimonial);
         Task<int> UpdateTestimonialAsync(TestimonialModel testimonial);
         Task<int> DeleteTestimonialAsync(int testimonialId, string updatedBy);
+        Task<int> UpdateTestimonialStatusAsync(int testimonialId, int status, string updatedBy);
     }
     public class TestimonialRepository: ITestimonialRepository
     {
@@ -111,6 +112,26 @@ namespace DAL.Repository
             var affectedRows = await connection.ExecuteAsync(query, new
             {
                 testimonial_id = testimonialId,
+                updated_by = updatedBy
+            });
+
+            return affectedRows;
+        }
+
+        public async Task<int> UpdateTestimonialStatusAsync(int testimonialId, int status, string updatedBy)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+                UPDATE {testimonial} 
+                SET active = @status,
+                    updated_by = @updated_by,
+                    updated_on = CURRENT_TIMESTAMP
+                WHERE testimonial_id = @testimonial_id";
+
+            var affectedRows = await connection.ExecuteAsync(query, new
+            {
+                testimonial_id = testimonialId,
+                status = status,
                 updated_by = updatedBy
             });
 

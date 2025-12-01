@@ -16,6 +16,7 @@ namespace BAL.Services
         Task<CommonResponseModel<TestimonialModel>> AddTestimonialAsync(TestimonialModel testimonial);
         Task<CommonResponseModel<TestimonialModel>> UpdateTestimonialAsync(TestimonialModel testimonial);
         Task<CommonResponseModel<TestimonialModel>> DeleteTestimonialAsync(int testimonialId, string updatedBy);
+        Task<CommonResponseModel<bool>> UpdateTestimonialStatusAsync(int testimonialId, int status, string updatedBy);
     }
     public class TestimonialService: ITestimonialService
     {
@@ -184,6 +185,50 @@ namespace BAL.Services
                 response.Status = "Failure";
                 response.Message = $"Error deleting testimonial: {ex.Message}";
                 response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<bool>> UpdateTestimonialStatusAsync(int testimonialId, int status, string updatedBy)
+        {
+            var response = new CommonResponseModel<bool>();
+            try
+            {
+                // Check if testimonial exists
+                var existingTestimonial = await _testimonialRepository.GetTestimonialByIdAsync(testimonialId);
+                if (existingTestimonial == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Testimonial not found";
+                    response.ErrorCode = "404";
+                    response.Data = false;
+                    return response;
+                }
+
+                var affectedRows = await _testimonialRepository.UpdateTestimonialStatusAsync(testimonialId, status, updatedBy);
+
+                if (affectedRows > 0)
+                {
+                    response.Status = "Success";
+                    response.Message = "Testimonial status updated successfully";
+                    response.ErrorCode = "0";
+                    response.Data = true;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "Failed to update testimonial status";
+                    response.ErrorCode = "1";
+                    response.Data = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error updating testimonial status: {ex.Message}";
+                response.ErrorCode = "1";
+                response.Data = false;
             }
 
             return response;
