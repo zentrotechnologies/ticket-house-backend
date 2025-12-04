@@ -372,24 +372,52 @@ namespace DAL.Repository
             return affectedRows > 0;
         }
 
+        //public async Task<bool> DeleteEventOrganizer(Guid organizerId, string updatedBy)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+
+        //    // We'll update the active status instead of hard delete
+        //    var query = $@"
+        //        UPDATE {DatabaseConfiguration.EventOrganizer} 
+        //        SET 
+        //            active = 0,
+        //            updated_by = @updated_by,
+        //            updated_on = CURRENT_TIMESTAMP
+        //        WHERE organizer_id = @organizer_id";
+
+        //    var affectedRows = await connection.ExecuteAsync(query, new
+        //    {
+        //        organizer_id = organizerId,
+        //        updated_by = updatedBy
+        //    });
+        //    return affectedRows > 0;
+        //}
+
         public async Task<bool> DeleteEventOrganizer(Guid organizerId, string updatedBy)
         {
             using var connection = _dbConnection.GetConnection();
 
-            // We'll update the active status instead of hard delete
             var query = $@"
-                UPDATE {DatabaseConfiguration.EventOrganizer} 
-                SET 
-                    active = 0,
-                    updated_by = @updated_by,
-                    updated_on = CURRENT_TIMESTAMP
-                WHERE organizer_id = @organizer_id";
+        -- Update organizer table
+        UPDATE {DatabaseConfiguration.EventOrganizer} 
+        SET active = 0, updated_by = @updated_by, updated_on = CURRENT_TIMESTAMP
+        WHERE organizer_id = @organizer_id;
+        
+        -- Update user table using the organizer's user_id
+        UPDATE {DatabaseConfiguration.Users} 
+        SET active = 0, updated_by = @updated_by, updated_on = CURRENT_TIMESTAMP
+        WHERE user_id = (
+            SELECT user_id 
+            FROM {DatabaseConfiguration.EventOrganizer} 
+            WHERE organizer_id = @organizer_id
+        );";
 
             var affectedRows = await connection.ExecuteAsync(query, new
             {
                 organizer_id = organizerId,
                 updated_by = updatedBy
             });
+
             return affectedRows > 0;
         }
 
