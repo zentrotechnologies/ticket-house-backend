@@ -16,10 +16,13 @@ namespace DAL.Repository
     {
         Task<UserModel> GetUserByEmail(string email);
         Task<UserModel> GetUserById(Guid userId);
+        Task<Guid?> GetSuperAdminUserId();
         Task<Guid> AddUser(UserModel user);
         Task<bool> UpdateUser(UserModel user);
-        Task<bool> CheckEmailExists(string email);
-        Task<bool> CheckMobileExists(string mobile);
+        //Task<bool> CheckEmailExists(string email);
+        //Task<bool> CheckMobileExists(string mobile);
+        Task<bool> CheckEmailExists(string email, Guid? excludeUserId = null);
+        Task<bool> CheckMobileExists(string mobile, Guid? excludeUserId = null);
         Task<EventOrganizerModel> GetOrganizerByUserId(Guid userId);
         Task<Guid> AddEventOrganizer(EventOrganizerModel organizer);
 
@@ -28,16 +31,20 @@ namespace DAL.Repository
         Task<bool> UpdateEventOrganizer(EventOrganizerModel organizer);
         Task<bool> DeleteEventOrganizer(Guid organizerId, string updatedBy);
         Task<bool> UpdateOrganizerStatus(Guid organizerId, int status, string updatedBy);
+        // New method for combined update
+        Task<bool> UpdateUserAndOrganizer(UserModel user, EventOrganizerModel organizer);
     }
     public class UserRepository: IUserRepository
     {
         private readonly ITHDBConnection _dbConnection;
         private readonly THConfiguration _configuration;
+        private readonly IEncryptionDecryption _encryption;
 
-        public UserRepository(ITHDBConnection dbConnection, THConfiguration configuration)
+        public UserRepository(ITHDBConnection dbConnection, THConfiguration configuration, IEncryptionDecryption encryption)
         {
             _dbConnection = dbConnection;
             _configuration = configuration;
+            _encryption = encryption;
         }
 
         public async Task<UserModel> GetUserByEmail(string email)
@@ -60,6 +67,17 @@ namespace DAL.Repository
                 LIMIT 1";
 
             return await connection.QueryFirstOrDefaultAsync<UserModel>(query, new { UserId = userId });
+        }
+
+        public async Task<Guid?> GetSuperAdminUserId()
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            SELECT user_id FROM {DatabaseConfiguration.Users} 
+            WHERE role_id = 1 AND active = 1 
+            LIMIT 1";
+
+            return await connection.QueryFirstOrDefaultAsync<Guid?>(query);
         }
 
         public async Task<Guid> AddUser(UserModel user)
@@ -123,25 +141,73 @@ namespace DAL.Repository
             return affectedRows > 0;
         }
 
-        public async Task<bool> CheckEmailExists(string email)
+        //public async Task<bool> CheckEmailExists(string email)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+        //    var query = $@"
+        //        SELECT COUNT(1) FROM {DatabaseConfiguration.Users} 
+        //        WHERE email = @Email AND active = 1";
+
+        //    var count = await connection.ExecuteScalarAsync<int>(query, new { Email = email });
+        //    return count > 0;
+        //}
+
+        public async Task<bool> CheckEmailExists(string email, Guid? excludeUserId = null)
         {
             using var connection = _dbConnection.GetConnection();
-            var query = $@"
+            var queryBuilder = new StringBuilder($@"
                 SELECT COUNT(1) FROM {DatabaseConfiguration.Users} 
-                WHERE email = @Email AND active = 1";
+                WHERE email = @Email AND active = 1");
 
-            var count = await connection.ExecuteScalarAsync<int>(query, new { Email = email });
+            if (excludeUserId.HasValue)
+            {
+                queryBuilder.Append(" AND user_id != @ExcludeUserId");
+            }
+
+            var query = queryBuilder.ToString();
+
+            var parameters = new
+            {
+                Email = email,
+                ExcludeUserId = excludeUserId
+            };
+
+            var count = await connection.ExecuteScalarAsync<int>(query, parameters);
             return count > 0;
         }
 
-        public async Task<bool> CheckMobileExists(string mobile)
+        //public async Task<bool> CheckMobileExists(string mobile)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+        //    var query = $@"
+        //        SELECT COUNT(1) FROM {DatabaseConfiguration.Users} 
+        //        WHERE mobile = @Mobile AND active = 1";
+
+        //    var count = await connection.ExecuteScalarAsync<int>(query, new { Mobile = mobile });
+        //    return count > 0;
+        //}
+
+        public async Task<bool> CheckMobileExists(string mobile, Guid? excludeUserId = null)
         {
             using var connection = _dbConnection.GetConnection();
-            var query = $@"
+            var queryBuilder = new StringBuilder($@"
                 SELECT COUNT(1) FROM {DatabaseConfiguration.Users} 
-                WHERE mobile = @Mobile AND active = 1";
+                WHERE mobile = @Mobile AND active = 1");
 
-            var count = await connection.ExecuteScalarAsync<int>(query, new { Mobile = mobile });
+            if (excludeUserId.HasValue)
+            {
+                queryBuilder.Append(" AND user_id != @ExcludeUserId");
+            }
+
+            var query = queryBuilder.ToString();
+
+            var parameters = new
+            {
+                Mobile = mobile,
+                ExcludeUserId = excludeUserId
+            };
+
+            var count = await connection.ExecuteScalarAsync<int>(query, parameters);
             return count > 0;
         }
 
@@ -293,6 +359,52 @@ namespace DAL.Repository
             };
         }
 
+        //public async Task<OrganizerResponse> GetOrganizerById(Guid organizerId)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+
+        //    var query = $@"
+        //        SELECT 
+        //            u.user_id,
+        //            u.first_name,
+        //            u.last_name,
+        //            u.email,
+        //            u.mobile,
+        //            u.role_id,
+        //            u.created_on,
+        //            u.password,
+        //            u.active as user_active,
+        //            eo.organizer_id,
+        //            eo.org_name,
+        //            eo.org_start_date,
+        //            eo.bank_account_no,
+        //            eo.bank_ifsc,
+        //            eo.bank_name,
+        //            eo.beneficiary_name,
+        //            eo.owner_personal_email,
+        //            eo.owner_mobile,
+        //            eo.state,
+        //            eo.city,
+        //            eo.country,
+        //            eo.aadhar_number,
+        //            eo.pancard_number,
+        //            eo.gst_number,
+        //            eo.instagram_link,
+        //            eo.youtube_link,
+        //            eo.facebook_link,
+        //            eo.twitter_link,
+        //            eo.verification_status,
+        //            eo.active as organizer_active,
+        //            rm.role_name
+        //        FROM {DatabaseConfiguration.Users} u
+        //        INNER JOIN {DatabaseConfiguration.EventOrganizer} eo ON u.user_id = eo.user_id
+        //        LEFT JOIN {DatabaseConfiguration.RoleMaster} rm ON u.role_id = rm.role_id
+        //        WHERE eo.organizer_id = @OrganizerId AND eo.active = 1
+        //        LIMIT 1";
+
+        //    return await connection.QueryFirstOrDefaultAsync<OrganizerResponse>(query, new { OrganizerId = organizerId });
+        //}
+
         public async Task<OrganizerResponse> GetOrganizerById(Guid organizerId)
         {
             using var connection = _dbConnection.GetConnection();
@@ -306,6 +418,7 @@ namespace DAL.Repository
                     u.mobile,
                     u.role_id,
                     u.created_on,
+                    u.password,
                     u.active as user_active,
                     eo.organizer_id,
                     eo.org_name,
@@ -335,7 +448,15 @@ namespace DAL.Repository
                 WHERE eo.organizer_id = @OrganizerId AND eo.active = 1
                 LIMIT 1";
 
-            return await connection.QueryFirstOrDefaultAsync<OrganizerResponse>(query, new { OrganizerId = organizerId });
+            var organizer = await connection.QueryFirstOrDefaultAsync<OrganizerResponse>(query, new { OrganizerId = organizerId });
+
+            // Decrypt password if exists
+            if (organizer != null && !string.IsNullOrEmpty(organizer.password))
+            {
+                organizer.password = await _encryption.Decryption(organizer.password);
+            }
+
+            return organizer;
         }
 
         public async Task<bool> UpdateEventOrganizer(EventOrganizerModel organizer)
@@ -440,6 +561,117 @@ namespace DAL.Repository
                 updated_by = updatedBy
             });
             return affectedRows > 0;
+        }
+
+        public async Task<bool> UpdateUserAndOrganizer(UserModel user, EventOrganizerModel organizer)
+        {
+            using var connection = _dbConnection.GetConnection();
+            connection.Open();
+
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                // Update user
+                var userQueryBuilder = new StringBuilder($@"
+                UPDATE {DatabaseConfiguration.Users} 
+                SET first_name = @first_name, 
+                    last_name = @last_name, 
+                    country_code = @country_code,
+                    mobile = @mobile, 
+                    profile_img = @profile_img, 
+                    googleclient_id = @googleclient_id,
+                    role_id = @role_id, 
+                    updated_by = @updated_by,
+                    updated_on = CURRENT_TIMESTAMP");
+
+                // Only update password if it's not null (meaning it has changed)
+                if (!string.IsNullOrEmpty(user.password))
+                {
+                    userQueryBuilder.Append(", password = @password");
+                }
+
+                userQueryBuilder.Append(" WHERE user_id = @user_id AND active = 1");
+
+                var userQuery = userQueryBuilder.ToString();
+
+                var userParams = new
+                {
+                    user_id = user.user_id,
+                    first_name = user.first_name,
+                    last_name = user.last_name,
+                    country_code = user.country_code,
+                    mobile = user.mobile,
+                    profile_img = user.profile_img,
+                    googleclient_id = user.googleclient_id,
+                    role_id = user.role_id,
+                    password = user.password, // This will be null if password hasn't changed
+                    updated_by = user.updated_by
+                };
+
+                var userRows = await connection.ExecuteAsync(userQuery, userParams, transaction);
+
+                // Update organizer
+                var organizerQuery = $@"
+                UPDATE {DatabaseConfiguration.EventOrganizer} 
+                SET 
+                    org_name = @org_name,
+                    org_start_date = @org_start_date,
+                    bank_account_no = @bank_account_no,
+                    bank_ifsc = @bank_ifsc,
+                    bank_name = @bank_name,
+                    beneficiary_name = @beneficiary_name,
+                    aadhar_number = @aadhar_number,
+                    pancard_number = @pancard_number,
+                    owner_personal_email = @owner_personal_email,
+                    owner_mobile = @owner_mobile,
+                    state = @state,
+                    city = @city,
+                    country = @country,
+                    gst_number = @gst_number,
+                    instagram_link = @instagram_link,
+                    youtube_link = @youtube_link,
+                    facebook_link = @facebook_link,
+                    twitter_link = @twitter_link,
+                    updated_by = @updated_by,
+                    updated_on = CURRENT_TIMESTAMP
+                WHERE organizer_id = @organizer_id AND user_id = @user_id";
+
+                var organizerParams = new
+                {
+                    organizer_id = organizer.organizer_id,
+                    user_id = organizer.user_id,
+                    org_name = organizer.org_name,
+                    org_start_date = organizer.org_start_date,
+                    bank_account_no = organizer.bank_account_no,
+                    bank_ifsc = organizer.bank_ifsc,
+                    bank_name = organizer.bank_name,
+                    beneficiary_name = organizer.beneficiary_name,
+                    aadhar_number = organizer.aadhar_number,
+                    pancard_number = organizer.pancard_number,
+                    owner_personal_email = organizer.owner_personal_email,
+                    owner_mobile = organizer.owner_mobile,
+                    state = organizer.state,
+                    city = organizer.city,
+                    country = organizer.country,
+                    gst_number = organizer.gst_number,
+                    instagram_link = organizer.instagram_link,
+                    youtube_link = organizer.youtube_link,
+                    facebook_link = organizer.facebook_link,
+                    twitter_link = organizer.twitter_link,
+                    updated_by = organizer.updated_by
+                };
+
+                var organizerRows = await connection.ExecuteAsync(organizerQuery, organizerParams, transaction);
+
+                transaction.Commit();
+                return userRows > 0 && organizerRows > 0;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
     }
 }

@@ -85,7 +85,10 @@ namespace TicketHouseBackend.Controllers.Masters
 
             request.updated_by = currentUserId;
 
-            var response = await _userService.UpdateOrganizer(request, organizerId);
+            //var response = await _userService.UpdateOrganizer(request, organizerId);
+
+            // Use the combined update method
+            var response = await _userService.UpdateOrganizerWithUserDetails(request, organizerId);
 
             if (response.Success == true)
                 return Ok(response);

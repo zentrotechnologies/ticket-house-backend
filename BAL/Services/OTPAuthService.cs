@@ -1,4 +1,5 @@
 ﻿using DAL.Repository;
+using Microsoft.Extensions.Logging;
 using MODEL.Entities;
 using MODEL.Request;
 using MODEL.Response;
@@ -21,12 +22,14 @@ namespace BAL.Services
         private readonly ILoginRepository _loginRepository;
         private readonly IUserRepository _userRepository;
         private readonly IEmailService _emailService;
+        private readonly ILogger<OTPAuthService> _logger;
 
-        public OTPAuthService(ILoginRepository loginRepository, IUserRepository userRepository, IEmailService emailService)
+        public OTPAuthService(ILoginRepository loginRepository, IUserRepository userRepository, IEmailService emailService, ILogger<OTPAuthService> logger)
         {
             _loginRepository = loginRepository;
             _userRepository = userRepository;
             _emailService = emailService;
+            _logger = logger;
         }
 
         public async Task<OTPResponse> GenerateOTP(GenerateOTPRequest request)
@@ -63,7 +66,7 @@ namespace BAL.Services
                     country_code = request.country_code,
                     type = request.contact_type.ToLower(),
                     otp = otp,
-                    status = "pending",
+                    status = "not verified",
                     created_by = "system",
                     updated_by = "system"
                 };
@@ -74,11 +77,13 @@ namespace BAL.Services
                     var user = await _userRepository.GetUserByEmail(request.email);
                     if (user != null)
                     {
+                        _logger.LogInformation($"Found existing user: {user.user_id} for email: {request.email}");
                         otpVerification.user_id = user.user_id;
                     }
                 }
 
                 var otpId = await _loginRepository.AddOtpVerification(otpVerification);
+                _logger.LogInformation($"OTP saved to database with ID: {otpId}");
 
                 // Send OTP via email if email is provided and type is email
                 if (!string.IsNullOrEmpty(request.email) && request.contact_type.ToLower() == "email")
@@ -86,12 +91,15 @@ namespace BAL.Services
                     var user = await _userRepository.GetUserByEmail(request.email);
                     var userName = user?.first_name ?? "User";
 
+                    _logger.LogInformation($"Attempting to send OTP email to: {request.email}");
+
                     var emailSent = await _emailService.SendOTPEmailAsync(request.email, otp, userName);
 
                     if (!emailSent)
                     {
                         // Don't fail the request if email fails, just log it
                         Console.WriteLine($"Warning: Failed to send OTP email to {request.email}");
+                        _logger.LogError($"Failed to send OTP email to {request.email}");
                     }
                 }
 

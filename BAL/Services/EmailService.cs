@@ -32,6 +32,11 @@ namespace BAL.Services
             {
                 using (var client = new SmtpClient(_configuration.SmtpServer, _configuration.SmtpPort))
                 {
+                    _logger.LogInformation($"Attempting to send email to: {toEmail}");
+                    _logger.LogInformation($"SMTP Server: {_configuration.SmtpServer}:{_configuration.SmtpPort}");
+                    _logger.LogInformation($"SMTP Username: {_configuration.SmtpUsername}");
+                    _logger.LogInformation($"From Email: {_configuration.FromEmail}");
+
                     client.EnableSsl = _configuration.EnableSsl;
                     client.Credentials = new NetworkCredential(_configuration.SmtpUsername, _configuration.SmtpPassword);
 

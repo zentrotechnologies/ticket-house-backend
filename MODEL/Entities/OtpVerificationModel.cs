@@ -17,7 +17,7 @@ namespace MODEL.Entities
         public string? email { get; set; }
         public string? type { get; set; } // "email" or "mobile"
         public string? otp { get; set; }
-        public string status { get; set; } = "pending"; // "pending", "verified", "expired"
+        public string status { get; set; } = "not verified"; // "not verified", "verified", "expired"
         public string? created_by { get; set; }
         public DateTime created_on { get; set; } = DateTime.UtcNow;
         public string? updated_by { get; set; }

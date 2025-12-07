@@ -29,6 +29,8 @@ namespace BAL.Services
         Task<CommonResponseModel<bool>> UpdateOrganizerStatus(Guid organizerId, int status, string updatedBy);
         Task<OrganizerPagedResponse> GetPaginatedOrganizers(PaginationRequest request);
         Task<CommonResponseModel<OrganizerResponse>> GetOrganizerById(Guid organizerId);
+        // Add new method for combined update
+        Task<CommonResponseModel<OrganizerResponse>> UpdateOrganizerWithUserDetails(OrganizerRequest request, Guid organizerId);
     }
     public class UserService: IUserService
     {
@@ -68,6 +70,10 @@ namespace BAL.Services
                     return response;
                 }
 
+                // Get SuperAdmin's user_id for created_by and updated_by
+                var superAdminUserId = await _userRepository.GetSuperAdminUserId();
+                var createdBy = superAdminUserId?.ToString() ?? "system"; // Fallback to "system" if no SuperAdmin found
+
                 // Create user
                 var user = new UserModel
                 {
@@ -78,8 +84,8 @@ namespace BAL.Services
                     mobile = signUpRequest.mobile,
                     role_id = signUpRequest.role_id,
                     password = await _encryption.Encryption(signUpRequest.password),
-                    created_by = "system",
-                    updated_by = "system"
+                    created_by = createdBy, // Use SuperAdmin's user_id
+                    updated_by = createdBy  // Use SuperAdmin's user_id
                 };
 
                 var userId = await _userRepository.AddUser(user);
@@ -115,8 +121,8 @@ namespace BAL.Services
                         youtube_link = signUpRequest.youtube_link,
                         facebook_link = signUpRequest.facebook_link,
                         twitter_link = signUpRequest.twitter_link,
-                        created_by = "system",
-                        updated_by = "system"
+                        created_by = createdBy, // Use SuperAdmin's user_id
+                        updated_by = createdBy  // Use SuperAdmin's user_id
                     };
 
                     var organizerId = await _userRepository.AddEventOrganizer(organizer);
@@ -399,6 +405,82 @@ namespace BAL.Services
             }
         }
 
+        //public async Task<CommonResponseModel<OrganizerResponse>> UpdateOrganizer(OrganizerRequest request, Guid organizerId)
+        //{
+        //    var response = new CommonResponseModel<OrganizerResponse>();
+
+        //    try
+        //    {
+        //        // Get existing organizer
+        //        var existingOrganizer = await _userRepository.GetOrganizerById(organizerId);
+        //        if (existingOrganizer == null)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Success = false;
+        //            response.Message = "Organizer not found";
+        //            response.ErrorCode = "1";
+        //            return response;
+        //        }
+
+        //        // Update organizer details
+        //        var organizer = new EventOrganizerModel
+        //        {
+        //            organizer_id = organizerId,
+        //            user_id = existingOrganizer.user_id.Value,
+        //            org_name = request.org_name,
+        //            org_start_date = request.org_start_date,
+        //            bank_account_no = request.bank_account_no,
+        //            bank_ifsc = request.bank_ifsc,
+        //            bank_name = request.bank_name,
+        //            beneficiary_name = request.beneficiary_name,
+        //            aadhar_number = request.aadhar_number,
+        //            pancard_number = request.pancard_number,
+        //            owner_personal_email = request.owner_personal_email,
+        //            owner_mobile = request.owner_mobile,
+        //            state = request.state,
+        //            city = request.city,
+        //            country = request.country,
+        //            gst_number = request.gst_number,
+        //            instagram_link = request.instagram_link,
+        //            youtube_link = request.youtube_link,
+        //            facebook_link = request.facebook_link,
+        //            twitter_link = request.twitter_link,
+        //            verification_status = existingOrganizer.verification_status ?? "pending",
+        //            updated_by = request.updated_by
+        //        };
+
+        //        var isUpdated = await _userRepository.UpdateEventOrganizer(organizer);
+
+        //        if (!isUpdated)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Success = false;
+        //            response.Message = "Failed to update organizer";
+        //            response.ErrorCode = "1";
+        //            return response;
+        //        }
+
+        //        // Get updated organizer
+        //        var updatedOrganizer = await _userRepository.GetOrganizerById(organizerId);
+
+        //        response.Status = "Success";
+        //        response.Success = true;
+        //        response.Message = "Organizer updated successfully";
+        //        response.ErrorCode = "0";
+        //        response.Data = updatedOrganizer;
+
+        //        return response;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        response.Status = "Failure";
+        //        response.Success = false;
+        //        response.Message = $"Failed to update organizer: {ex.Message}";
+        //        response.ErrorCode = "1";
+        //        return response;
+        //    }
+        //}
+
         public async Task<CommonResponseModel<OrganizerResponse>> UpdateOrganizer(OrganizerRequest request, Guid organizerId)
         {
             var response = new CommonResponseModel<OrganizerResponse>();
@@ -412,6 +494,28 @@ namespace BAL.Services
                     response.Status = "Failure";
                     response.Success = false;
                     response.Message = "Organizer not found";
+                    response.ErrorCode = "1";
+                    return response;
+                }
+
+                // Check if email exists for other active users
+                if (!string.IsNullOrEmpty(request.email) &&
+                    await _userRepository.CheckEmailExists(request.email, existingOrganizer.user_id))
+                {
+                    response.Status = "Failure";
+                    response.Success = false;
+                    response.Message = "Email already registered for another user";
+                    response.ErrorCode = "1";
+                    return response;
+                }
+
+                // Check if mobile exists for other active users
+                if (!string.IsNullOrEmpty(request.mobile) &&
+                    await _userRepository.CheckMobileExists(request.mobile, existingOrganizer.user_id))
+                {
+                    response.Status = "Failure";
+                    response.Success = false;
+                    response.Message = "Mobile number already registered for another user";
                     response.ErrorCode = "1";
                     return response;
                 }
@@ -568,6 +672,150 @@ namespace BAL.Services
                 response.Success = false;
                 response.Message = $"Failed to fetch organizer: {ex.Message}";
                 response.ErrorCode = "GET_ORGANIZER_ERROR";
+                return response;
+            }
+        }
+
+        // NEW METHOD: Update both user and organizer details
+        public async Task<CommonResponseModel<OrganizerResponse>> UpdateOrganizerWithUserDetails(OrganizerRequest request, Guid organizerId)
+        {
+            var response = new CommonResponseModel<OrganizerResponse>();
+
+            try
+            {
+                // Get existing organizer
+                var existingOrganizer = await _userRepository.GetOrganizerById(organizerId);
+                if (existingOrganizer == null)
+                {
+                    response.Status = "Failure";
+                    response.Success = false;
+                    response.Message = "Organizer not found";
+                    response.ErrorCode = "1";
+                    return response;
+                }
+
+                // Check if email exists for other active users
+                if (!string.IsNullOrEmpty(request.email) &&
+                    await _userRepository.CheckEmailExists(request.email, existingOrganizer.user_id))
+                {
+                    response.Status = "Failure";
+                    response.Success = false;
+                    response.Message = "Email already registered for another user";
+                    response.ErrorCode = "1";
+                    return response;
+                }
+
+                // Check if mobile exists for other active users
+                if (!string.IsNullOrEmpty(request.mobile) &&
+                    await _userRepository.CheckMobileExists(request.mobile, existingOrganizer.user_id))
+                {
+                    response.Status = "Failure";
+                    response.Success = false;
+                    response.Message = "Mobile number already registered for another user";
+                    response.ErrorCode = "1";
+                    return response;
+                }
+
+                // Prepare user update
+                var user = new UserModel
+                {
+                    user_id = existingOrganizer.user_id.Value,
+                    first_name = request.first_name,
+                    last_name = request.last_name,
+                    email = request.email,
+                    country_code = request.country_code,
+                    mobile = request.mobile,
+                    role_id = request.role_id,
+                    updated_by = request.updated_by
+                };
+
+                // Check if password needs to be updated
+                // IMPORTANT: Only encrypt if password is provided AND it's not the same as current decrypted password
+                if (!string.IsNullOrEmpty(request.password))
+                {
+                    // Get current user to check password
+                    var currentUser = await _userRepository.GetUserById(existingOrganizer.user_id.Value);
+
+                    if (currentUser != null)
+                    {
+                        // Decrypt current password to compare
+                        var currentDecryptedPassword = await _encryption.Decryption(currentUser.password);
+
+                        // Only encrypt and update if password has changed
+                        if (request.password != currentDecryptedPassword)
+                        {
+                            user.password = await _encryption.Encryption(request.password);
+                        }
+                        // If password is same as current, don't update it (keep existing encrypted password)
+                        else
+                        {
+                            // Don't set password field, it won't be updated in the database
+                            user.password = null;
+                        }
+                    }
+                    else
+                    {
+                        // If we can't get current user, encrypt the provided password
+                        user.password = await _encryption.Encryption(request.password);
+                    }
+                }
+
+                // Prepare organizer update
+                var organizer = new EventOrganizerModel
+                {
+                    organizer_id = organizerId,
+                    user_id = existingOrganizer.user_id.Value,
+                    org_name = request.org_name,
+                    org_start_date = request.org_start_date,
+                    bank_account_no = request.bank_account_no,
+                    bank_ifsc = request.bank_ifsc,
+                    bank_name = request.bank_name,
+                    beneficiary_name = request.beneficiary_name,
+                    aadhar_number = request.aadhar_number,
+                    pancard_number = request.pancard_number,
+                    owner_personal_email = request.owner_personal_email,
+                    owner_mobile = request.owner_mobile,
+                    state = request.state,
+                    city = request.city,
+                    country = request.country,
+                    gst_number = request.gst_number,
+                    instagram_link = request.instagram_link,
+                    youtube_link = request.youtube_link,
+                    facebook_link = request.facebook_link,
+                    twitter_link = request.twitter_link,
+                    verification_status = existingOrganizer.verification_status ?? "pending",
+                    updated_by = request.updated_by
+                };
+
+                // Update both user and organizer in a transaction
+                var isUpdated = await _userRepository.UpdateUserAndOrganizer(user, organizer);
+
+                if (!isUpdated)
+                {
+                    response.Status = "Failure";
+                    response.Success = false;
+                    response.Message = "Failed to update organizer details";
+                    response.ErrorCode = "1";
+                    return response;
+                }
+
+                // Get updated organizer with decrypted password
+                var updatedOrganizer = await _userRepository.GetOrganizerById(organizerId);
+
+                response.Status = "Success";
+                response.Success = true;
+                response.Message = "Organizer updated successfully";
+                response.ErrorCode = "0";
+                response.Data = updatedOrganizer;
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Success = false;
+                response.Message = $"Failed to update organizer: {ex.Message}";
+                response.ErrorCode = "1";
                 return response;
             }
         }

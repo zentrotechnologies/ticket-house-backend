@@ -19,6 +19,7 @@ namespace MODEL.Response
         public string? verification_status { get; set; }
         public int? active { get; set; }
         public string? created_on { get; set; }
+        public string? password { get; set; } // Encrypted password
 
         // User role info
         public int? role_id { get; set; }
@@ -28,6 +29,7 @@ namespace MODEL.Response
         public string? bank_account_no { get; set; }
         public string? bank_name { get; set; }
         public string? beneficiary_name { get; set; }
+        public string? bank_ifsc { get; set; }
 
         // Contact info
         public string? owner_personal_email { get; set; }
