@@ -47,4 +47,13 @@ namespace MODEL.Response
 
         public List<EventMediaModel> EventMedia { get; set; } = new List<EventMediaModel>();
     }
+
+    // Combined response model
+    public class EventCompleteResponseModel
+    {
+        public EventDetailsModel EventDetails { get; set; }
+        public List<EventArtistModel> EventArtists { get; set; } = new List<EventArtistModel>();
+        public List<EventGalleryModel> EventGalleries { get; set; } = new List<EventGalleryModel>();
+        public List<EventMediaModel> EventMedia { get; set; } = new List<EventMediaModel>();
+    }
 }

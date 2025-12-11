@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.Extensions.Logging;
 using MODEL.Entities;
 using MODEL.Response;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,12 +30,27 @@ namespace DAL.Repository
         Task<IEnumerable<EventWithMediaResponse>> GetEventsWithMediaByCategoryAsync(int categoryId);
         Task<IEnumerable<EventWithMediaResponse>> GetUpcomingEventsWithMediaAsync(int days = 30);
         Task<IEnumerable<EventWithMediaResponse>> GetFeaturedEventsWithMediaAsync();
+
+        Task<Guid?> GetOrganizerIdByUserIdAsync(Guid userId);
+        Task<UserOrganizerMapping> GetOrganizerByUserIdAsync(Guid userId);
+
+        // Artist methods
+        Task<int> AddEventArtistAsync(EventArtistModel eventArtist);
+        Task<IEnumerable<EventArtistModel>> GetEventArtistsByEventIdAsync(int eventId);
+        Task<int> DeleteAllEventArtistsAsync(int eventId, string updatedBy);
+
+        // Gallery methods
+        Task<int> AddEventGalleryAsync(EventGalleryModel eventGallery);
+        Task<IEnumerable<EventGalleryModel>> GetEventGalleriesByEventIdAsync(int eventId);
+        Task<int> DeleteAllEventGalleriesAsync(int eventId, string updatedBy);
     }
     public class EventDetailsRepository: IEventDetailsRepository
     {
         private readonly ITHDBConnection _dbConnection;
         private readonly string events = DatabaseConfiguration.events;
         private readonly string event_media = DatabaseConfiguration.event_media;
+        private readonly string EventOrganizer = DatabaseConfiguration.EventOrganizer;
+        private readonly string Users = DatabaseConfiguration.Users;
 
         public EventDetailsRepository(ITHDBConnection dbConnection)
         {
@@ -62,9 +78,99 @@ namespace DAL.Repository
             return await connection.QueryFirstOrDefaultAsync<EventDetailsModel>(query, new { EventId = eventId });
         }
 
+        //public async Task<int> CreateEventAsync(EventDetailsModel eventDetails)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+        //    var query = $@"
+        //        INSERT INTO {events} 
+        //        (organizer_id, event_name, event_description, event_date, start_time, end_time,
+        //         total_duration_minutes, location, full_address, geo_map_url, latitude, longitude,
+        //         language, event_category_id, banner_image, gallery_media, age_limit, artists,
+        //         terms_and_conditions, min_price, max_price, is_featured, status, created_by, updated_by)
+        //        VALUES 
+        //        (@organizer_id, @event_name, @event_description, @event_date, @start_time, @end_time,
+        //         @total_duration_minutes, @location, @full_address, @geo_map_url, @latitude, @longitude,
+        //         @language, @event_category_id, @banner_image, @gallery_media, @age_limit, @artists,
+        //         @terms_and_conditions, @min_price, @max_price, @is_featured, @status, @created_by, @updated_by)
+        //        RETURNING event_id";
+
+        //    var eventId = await connection.ExecuteScalarAsync<int>(query, new
+        //    {
+        //        organizer_id = eventDetails.organizer_id,
+        //        event_name = eventDetails.event_name,
+        //        event_description = eventDetails.event_description,
+        //        event_date = eventDetails.event_date,
+        //        start_time = eventDetails.start_time,
+        //        end_time = eventDetails.end_time,
+        //        total_duration_minutes = eventDetails.total_duration_minutes,
+        //        location = eventDetails.location,
+        //        full_address = eventDetails.full_address,
+        //        geo_map_url = eventDetails.geo_map_url,
+        //        latitude = eventDetails.latitude,
+        //        longitude = eventDetails.longitude,
+        //        language = eventDetails.language,
+        //        event_category_id = eventDetails.event_category_id,
+        //        banner_image = eventDetails.banner_image,
+        //        gallery_media = eventDetails.gallery_media,
+        //        age_limit = eventDetails.age_limit,
+        //        artists = eventDetails.artists,
+        //        terms_and_conditions = eventDetails.terms_and_conditions,
+        //        min_price = eventDetails.min_price,
+        //        max_price = eventDetails.max_price,
+        //        is_featured = eventDetails.is_featured,
+        //        status = eventDetails.status,
+        //        created_by = eventDetails.created_by,
+        //        updated_by = eventDetails.updated_by
+        //    });
+
+        //    return eventId;
+        //}
+
         public async Task<int> CreateEventAsync(EventDetailsModel eventDetails)
         {
             using var connection = _dbConnection.GetConnection();
+
+            // Parse gallery_media and artists to ensure they're proper JSON
+            object galleryMedia = "[]";
+            object artists = "[]";
+
+            try
+            {
+                if (eventDetails.gallery_media != null)
+                {
+                    if (eventDetails.gallery_media is string galleryMediaStr)
+                    {
+                        // Try to parse as JSON to validate
+                        JsonConvert.DeserializeObject(galleryMediaStr);
+                        galleryMedia = galleryMediaStr;
+                    }
+                    else
+                    {
+                        galleryMedia = JsonConvert.SerializeObject(eventDetails.gallery_media);
+                    }
+                }
+
+                if (eventDetails.artists != null)
+                {
+                    if (eventDetails.artists is string artistsStr)
+                    {
+                        // Try to parse as JSON to validate
+                        JsonConvert.DeserializeObject(artistsStr);
+                        artists = artistsStr;
+                    }
+                    else
+                    {
+                        artists = JsonConvert.SerializeObject(eventDetails.artists);
+                    }
+                }
+            }
+            catch
+            {
+                // If invalid JSON, use empty arrays
+                galleryMedia = "[]";
+                artists = "[]";
+            }
+
             var query = $@"
                 INSERT INTO {events} 
                 (organizer_id, event_name, event_description, event_date, start_time, end_time,
@@ -74,7 +180,7 @@ namespace DAL.Repository
                 VALUES 
                 (@organizer_id, @event_name, @event_description, @event_date, @start_time, @end_time,
                  @total_duration_minutes, @location, @full_address, @geo_map_url, @latitude, @longitude,
-                 @language, @event_category_id, @banner_image, @gallery_media, @age_limit, @artists,
+                 @language, @event_category_id, @banner_image, @gallery_media::json, @age_limit, @artists::json,
                  @terms_and_conditions, @min_price, @max_price, @is_featured, @status, @created_by, @updated_by)
                 RETURNING event_id";
 
@@ -95,9 +201,9 @@ namespace DAL.Repository
                 language = eventDetails.language,
                 event_category_id = eventDetails.event_category_id,
                 banner_image = eventDetails.banner_image,
-                gallery_media = eventDetails.gallery_media,
+                gallery_media = galleryMedia, // Use parsed JSON
                 age_limit = eventDetails.age_limit,
-                artists = eventDetails.artists,
+                artists = artists, // Use parsed JSON
                 terms_and_conditions = eventDetails.terms_and_conditions,
                 min_price = eventDetails.min_price,
                 max_price = eventDetails.max_price,
@@ -110,9 +216,115 @@ namespace DAL.Repository
             return eventId;
         }
 
+        //public async Task<int> UpdateEventAsync(EventDetailsModel eventDetails)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+        //    var query = $@"
+        //        UPDATE {events} 
+        //        SET organizer_id = @organizer_id,
+        //            event_name = @event_name,
+        //            event_description = @event_description,
+        //            event_date = @event_date,
+        //            start_time = @start_time,
+        //            end_time = @end_time,
+        //            total_duration_minutes = @total_duration_minutes,
+        //            location = @location,
+        //            full_address = @full_address,
+        //            geo_map_url = @geo_map_url,
+        //            latitude = @latitude,
+        //            longitude = @longitude,
+        //            language = @language,
+        //            event_category_id = @event_category_id,
+        //            banner_image = @banner_image,
+        //            gallery_media = @gallery_media,
+        //            age_limit = @age_limit,
+        //            artists = @artists,
+        //            terms_and_conditions = @terms_and_conditions,
+        //            min_price = @min_price,
+        //            max_price = @max_price,
+        //            is_featured = @is_featured,
+        //            status = @status,
+        //            updated_by = @updated_by,
+        //            updated_at = CURRENT_TIMESTAMP
+        //        WHERE event_id = @event_id AND active = 1";
+
+        //    var affectedRows = await connection.ExecuteAsync(query, new
+        //    {
+        //        event_id = eventDetails.event_id,
+        //        organizer_id = eventDetails.organizer_id,
+        //        event_name = eventDetails.event_name,
+        //        event_description = eventDetails.event_description,
+        //        event_date = eventDetails.event_date,
+        //        start_time = eventDetails.start_time,
+        //        end_time = eventDetails.end_time,
+        //        total_duration_minutes = eventDetails.total_duration_minutes,
+        //        location = eventDetails.location,
+        //        full_address = eventDetails.full_address,
+        //        geo_map_url = eventDetails.geo_map_url,
+        //        latitude = eventDetails.latitude,
+        //        longitude = eventDetails.longitude,
+        //        language = eventDetails.language,
+        //        event_category_id = eventDetails.event_category_id,
+        //        banner_image = eventDetails.banner_image,
+        //        gallery_media = eventDetails.gallery_media,
+        //        age_limit = eventDetails.age_limit,
+        //        artists = eventDetails.artists,
+        //        terms_and_conditions = eventDetails.terms_and_conditions,
+        //        min_price = eventDetails.min_price,
+        //        max_price = eventDetails.max_price,
+        //        is_featured = eventDetails.is_featured,
+        //        status = eventDetails.status,
+        //        updated_by = eventDetails.updated_by
+        //    });
+
+        //    return affectedRows;
+        //}
+
         public async Task<int> UpdateEventAsync(EventDetailsModel eventDetails)
         {
             using var connection = _dbConnection.GetConnection();
+
+            // Parse gallery_media and artists to ensure they're proper JSON
+            object galleryMedia = "[]";
+            object artists = "[]";
+
+            try
+            {
+                if (eventDetails.gallery_media != null)
+                {
+                    if (eventDetails.gallery_media is string galleryMediaStr)
+                    {
+                        // Try to parse as JSON to validate
+                        JsonConvert.DeserializeObject(galleryMediaStr);
+                        galleryMedia = galleryMediaStr;
+                    }
+                    else
+                    {
+                        galleryMedia = JsonConvert.SerializeObject(eventDetails.gallery_media);
+                    }
+                }
+
+                if (eventDetails.artists != null)
+                {
+                    if (eventDetails.artists is string artistsStr)
+                    {
+                        // Try to parse as JSON to validate
+                        JsonConvert.DeserializeObject(artistsStr);
+                        artists = artistsStr;
+                    }
+                    else
+                    {
+                        artists = JsonConvert.SerializeObject(eventDetails.artists);
+                    }
+                }
+            }
+            catch
+            {
+                // If invalid JSON, use empty arrays
+                galleryMedia = "[]";
+                artists = "[]";
+            }
+
             var query = $@"
                 UPDATE {events} 
                 SET organizer_id = @organizer_id,
@@ -130,9 +342,9 @@ namespace DAL.Repository
                     language = @language,
                     event_category_id = @event_category_id,
                     banner_image = @banner_image,
-                    gallery_media = @gallery_media,
+                    gallery_media = @gallery_media::json,
                     age_limit = @age_limit,
-                    artists = @artists,
+                    artists = @artists::json,
                     terms_and_conditions = @terms_and_conditions,
                     min_price = @min_price,
                     max_price = @max_price,
@@ -160,9 +372,9 @@ namespace DAL.Repository
                 language = eventDetails.language,
                 event_category_id = eventDetails.event_category_id,
                 banner_image = eventDetails.banner_image,
-                gallery_media = eventDetails.gallery_media,
+                gallery_media = galleryMedia, // Use parsed JSON
                 age_limit = eventDetails.age_limit,
-                artists = eventDetails.artists,
+                artists = artists, // Use parsed JSON
                 terms_and_conditions = eventDetails.terms_and_conditions,
                 min_price = eventDetails.min_price,
                 max_price = eventDetails.max_price,
@@ -461,6 +673,141 @@ namespace DAL.Repository
                 .ToList();
 
             return groupedEvents;
+        }
+
+        public async Task<Guid?> GetOrganizerIdByUserIdAsync(Guid userId)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            SELECT organizer_id 
+            FROM {EventOrganizer} 
+            WHERE user_id = @UserId AND active = 1 
+            LIMIT 1";
+
+            return await connection.QueryFirstOrDefaultAsync<Guid?>(query, new { UserId = userId });
+        }
+
+        public async Task<UserOrganizerMapping> GetOrganizerByUserIdAsync(Guid userId)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            SELECT 
+                eo.user_id,
+                eo.organizer_id,
+                u.email
+            FROM {EventOrganizer} eo
+            INNER JOIN {Users} u ON eo.user_id = u.user_id
+            WHERE eo.user_id = @UserId 
+                AND eo.active = 1 
+                AND u.active = 1
+            LIMIT 1";
+
+            return await connection.QueryFirstOrDefaultAsync<UserOrganizerMapping>(query, new { UserId = userId });
+        }
+
+        // Event Artist Methods
+        public async Task<int> AddEventArtistAsync(EventArtistModel eventArtist)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            INSERT INTO event_artist 
+            (event_id, artist_name, artist_photo, created_by, updated_by)
+            VALUES 
+            (@event_id, @artist_name, @artist_photo, @created_by, @updated_by)
+            RETURNING event_artist_id";
+
+            var artistId = await connection.ExecuteScalarAsync<int>(query, new
+            {
+                event_id = eventArtist.event_id,
+                artist_name = eventArtist.artist_name,
+                artist_photo = eventArtist.artist_photo,
+                created_by = eventArtist.created_by,
+                updated_by = eventArtist.updated_by
+            });
+
+            return artistId;
+        }
+
+        public async Task<IEnumerable<EventArtistModel>> GetEventArtistsByEventIdAsync(int eventId)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            SELECT * FROM event_artist 
+            WHERE event_id = @EventId AND active = 1 
+            ORDER BY event_artist_id";
+
+            return await connection.QueryAsync<EventArtistModel>(query, new { EventId = eventId });
+        }
+
+        public async Task<int> DeleteAllEventArtistsAsync(int eventId, string updatedBy)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            UPDATE event_artist 
+            SET active = 0,
+                updated_by = @updated_by,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE event_id = @event_id AND active = 1";
+
+            var affectedRows = await connection.ExecuteAsync(query, new
+            {
+                event_id = eventId,
+                updated_by = updatedBy
+            });
+
+            return affectedRows;
+        }
+
+        // Event Gallery Methods
+        public async Task<int> AddEventGalleryAsync(EventGalleryModel eventGallery)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            INSERT INTO event_gallary 
+            (event_id, event_img, created_by, updated_by)
+            VALUES 
+            (@event_id, @event_img, @created_by, @updated_by)
+            RETURNING event_gallary_id";
+
+            var galleryId = await connection.ExecuteScalarAsync<int>(query, new
+            {
+                event_id = eventGallery.event_id,
+                event_img = eventGallery.event_img,
+                created_by = eventGallery.created_by,
+                updated_by = eventGallery.updated_by
+            });
+
+            return galleryId;
+        }
+
+        public async Task<IEnumerable<EventGalleryModel>> GetEventGalleriesByEventIdAsync(int eventId)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            SELECT * FROM event_gallary 
+            WHERE event_id = @EventId AND active = 1 
+            ORDER BY event_gallary_id";
+
+            return await connection.QueryAsync<EventGalleryModel>(query, new { EventId = eventId });
+        }
+
+        public async Task<int> DeleteAllEventGalleriesAsync(int eventId, string updatedBy)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            UPDATE event_gallary 
+            SET active = 0,
+                updated_by = @updated_by,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE event_id = @event_id AND active = 1";
+
+            var affectedRows = await connection.ExecuteAsync(query, new
+            {
+                event_id = eventId,
+                updated_by = updatedBy
+            });
+
+            return affectedRows;
         }
     }
 }

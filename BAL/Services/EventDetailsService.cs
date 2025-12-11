@@ -30,10 +30,12 @@ namespace BAL.Services
     public class EventDetailsService: IEventDetailsService
     {
         private readonly IEventDetailsRepository _eventDetailsRepository;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public EventDetailsService(IEventDetailsRepository eventDetailsRepository)
+        public EventDetailsService(IEventDetailsRepository eventDetailsRepository, IHttpContextAccessor httpContextAccessor)
         {
             _eventDetailsRepository = eventDetailsRepository;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<CommonResponseModel<IEnumerable<EventDetailsModel>>> GetAllEventsAsync()
@@ -98,6 +100,29 @@ namespace BAL.Services
             var response = new CommonResponseModel<EventResponse>();
             try
             {
+                // Get current user ID from JWT token
+                var userId = GetCurrentUserId();
+                if (userId == Guid.Empty)
+                {
+                    response.Status = "Failure";
+                    response.Message = "User not authenticated";
+                    response.ErrorCode = "401";
+                    return response;
+                }
+
+                // Get organizer ID for the current user
+                var organizerMapping = await _eventDetailsRepository.GetOrganizerByUserIdAsync(userId);
+                if (organizerMapping == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "User is not registered as an organizer";
+                    response.ErrorCode = "403";
+                    return response;
+                }
+
+                // Set organizer ID from the mapping
+                eventRequest.EventDetails.organizer_id = organizerMapping.organizer_id;
+
                 // Set created by user
                 eventRequest.EventDetails.created_by = createdBy;
                 eventRequest.EventDetails.updated_by = createdBy;
@@ -497,6 +522,23 @@ namespace BAL.Services
                 var duration = endTime - startTime;
                 return (int)duration.TotalMinutes;
             }
+        }
+
+        private Guid GetCurrentUserId()
+        {
+            // Get user ID from JWT claims
+            var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Guid.Empty;
+            }
+
+            if (Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return userId;
+            }
+
+            return Guid.Empty;
         }
     }
 }

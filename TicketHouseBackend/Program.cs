@@ -53,6 +53,8 @@ builder.Services.AddSingleton(thConfig);
 builder.Services.AddScoped<ITHDBConnection, THDBConnection>();
 builder.Services.AddScoped<IEncryptionDecryption, EncryptionDecryption>();
 
+builder.Services.AddHttpContextAccessor();
+
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ILoginRepository, LoginRepository>();
@@ -60,6 +62,7 @@ builder.Services.AddScoped<IBannerManagementRepository, BannerManagementReposito
 builder.Services.AddScoped<ITestimonialRepository, TestimonialRepository>();
 builder.Services.AddScoped<IEventCategoryRepository, EventCategoryRepository>();
 builder.Services.AddScoped<IEventDetailsRepository, EventDetailsRepository>();
+builder.Services.AddScoped<IEventArtistGalleryRepository, EventArtistGalleryRepository>();
 
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
@@ -69,6 +72,10 @@ builder.Services.AddScoped<IBannerManagementService, BannerManagementService>();
 builder.Services.AddScoped<ITestimonialService, TestimonialService>();
 builder.Services.AddScoped<IEventCategoryService, EventCategoryService>();
 builder.Services.AddScoped<IEventDetailsService, EventDetailsService>();
+builder.Services.AddScoped<IEventArtistGalleryService, EventArtistGalleryService>();
+
+// File upload helper
+builder.Services.AddScoped<IFileUploadHelper, EventFileUploadHelper>();
 
 // Configure form options for file uploads
 builder.Services.Configure<FormOptions>(options =>

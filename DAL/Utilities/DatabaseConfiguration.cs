@@ -18,5 +18,7 @@ namespace DAL.Utilities
         public static string event_category = DB_SCHEMA + "event_category";
         public static string events = DB_SCHEMA + "events";
         public static string event_media = DB_SCHEMA + "event_media";
+        public static string event_gallary = DB_SCHEMA + "event_gallary";
+        public static string event_artist = DB_SCHEMA + "event_artist";
     }
 }
