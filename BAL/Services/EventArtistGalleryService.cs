@@ -461,6 +461,24 @@ namespace BAL.Services
                         }
                     }
 
+                    // Add seat types if any
+                    if (eventRequest.SeatTypes != null && eventRequest.SeatTypes.Count > 0)
+                    {
+                        foreach (var seatType in eventRequest.SeatTypes)
+                        {
+                            seatType.event_id = eventId;
+                            seatType.created_by = userId.ToString();
+                            seatType.updated_by = userId.ToString();
+
+                            var seatTypeId = await _eventDetailsRepository.AddEventSeatTypeAsync(seatType);
+                            if (seatTypeId > 0)
+                            {
+                                seatType.event_seat_type_inventory_id = seatTypeId;
+                                result.SeatTypes.Add(seatType);
+                            }
+                        }
+                    }
+
                     response.Status = "Success";
                     response.Message = "Event created successfully with artists and galleries";
                     response.ErrorCode = "0";
@@ -737,6 +755,49 @@ namespace BAL.Services
                             {
                                 gallery.event_gallary_id = galleryId;
                                 result.EventGalleries.Add(gallery);
+                            }
+                        }
+                    }
+
+                    // Add new seat types - ADD THIS SECTION
+                    //if (eventRequest.SeatTypes != null && eventRequest.SeatTypes.Count > 0)
+                    //{
+                    //    foreach (var seatType in eventRequest.SeatTypes)
+                    //    {
+                    //        seatType.event_id = eventRequest.EventDetails.event_id;
+                    //        seatType.created_by = userId.ToString();
+                    //        seatType.updated_by = userId.ToString();
+
+                    //        var seatTypeId = await _eventDetailsRepository.AddEventSeatTypeAsync(seatType);
+                    //        if (seatTypeId > 0)
+                    //        {
+                    //            seatType.event_seat_type_inventory_id = seatTypeId;
+                    //            result.SeatTypes.Add(seatType);
+                    //        }
+                    //    }
+                    //}
+
+                    if (eventRequest.SeatTypes != null && eventRequest.SeatTypes.Count > 0)
+                    {
+                        // Delete existing seat types first
+                        await _eventDetailsRepository.DeleteAllEventSeatTypesAsync(
+                            eventRequest.EventDetails.event_id,
+                            userId.ToString()
+                        );
+
+                        foreach (var seatType in eventRequest.SeatTypes)
+                        {
+                            seatType.event_id = eventRequest.EventDetails.event_id;
+                            seatType.created_by = userId.ToString();
+                            seatType.updated_by = userId.ToString();
+                            seatType.created_on = DateTime.UtcNow; // Set creation time
+                            seatType.updated_on = DateTime.UtcNow;
+
+                            var seatTypeId = await _eventDetailsRepository.AddEventSeatTypeAsync(seatType);
+                            if (seatTypeId > 0)
+                            {
+                                seatType.event_seat_type_inventory_id = seatTypeId;
+                                result.SeatTypes.Add(seatType);
                             }
                         }
                     }

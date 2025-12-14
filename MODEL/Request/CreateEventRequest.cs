@@ -70,6 +70,7 @@ namespace MODEL.Request
         public EventDetailsModel EventDetails { get; set; }
         public List<EventArtistModel> EventArtists { get; set; } = new List<EventArtistModel>();
         public List<EventGalleryModel> EventGalleries { get; set; } = new List<EventGalleryModel>();
+        public List<EventSeatTypeInventoryModel> SeatTypes { get; set; } = new List<EventSeatTypeInventoryModel>();
 
         [DataType(DataType.Upload)]
         public IFormFile BannerImageFile { get; set; }
@@ -106,5 +107,14 @@ namespace MODEL.Request
 
         //[Required]
         public IFormFile BannerImage { get; set; }
+    }
+
+    public class SeatTypeRequest
+    {
+        public int event_id { get; set; }
+        public string seat_name { get; set; }
+        public decimal price { get; set; }
+        public int total_seats { get; set; }
+        public string created_by { get; set; }
     }
 }

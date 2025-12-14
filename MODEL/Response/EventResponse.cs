@@ -56,5 +56,6 @@ namespace MODEL.Response
         public List<EventArtistModel> EventArtists { get; set; } = new List<EventArtistModel>();
         public List<EventGalleryModel> EventGalleries { get; set; } = new List<EventGalleryModel>();
         public List<EventMediaModel> EventMedia { get; set; } = new List<EventMediaModel>();
+        public List<EventSeatTypeInventoryModel> SeatTypes { get; set; } = new List<EventSeatTypeInventoryModel>();
     }
 }

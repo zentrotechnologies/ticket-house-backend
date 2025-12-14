@@ -574,13 +574,22 @@ namespace TicketHouseBackend.Controllers.Masters
                 // Get banner file
                 var bannerFile = form.Files["BannerImageFile"];
 
+                // Parse SeatTypes
+                var seatTypes = new List<EventSeatTypeInventoryModel>();
+                if (form.TryGetValue("SeatTypes", out var seatTypesJson) && !string.IsNullOrEmpty(seatTypesJson))
+                {
+                    seatTypes = JsonConvert.DeserializeObject<List<EventSeatTypeInventoryModel>>(seatTypesJson)
+                        ?? new List<EventSeatTypeInventoryModel>();
+                }
+
                 // Create EventCreateRequestModel manually
                 var eventRequest = new EventCreateRequestModel
                 {
                     EventDetails = eventDetails,
                     EventArtists = eventArtists,
                     EventGalleries = eventGalleries,
-                    BannerImageFile = bannerFile
+                    BannerImageFile = bannerFile,
+                    SeatTypes = seatTypes // Add this line
                 };
 
                 // Get user from form data (passed from frontend)
@@ -758,13 +767,22 @@ namespace TicketHouseBackend.Controllers.Masters
                 // Get banner file
                 var bannerFile = form.Files["BannerImageFile"];
 
+                // Parse SeatTypes
+                var seatTypes = new List<EventSeatTypeInventoryModel>();
+                if (form.TryGetValue("SeatTypes", out var seatTypesJson) && !string.IsNullOrEmpty(seatTypesJson))
+                {
+                    seatTypes = JsonConvert.DeserializeObject<List<EventSeatTypeInventoryModel>>(seatTypesJson)
+                        ?? new List<EventSeatTypeInventoryModel>();
+                }
+
                 // Create EventCreateRequestModel manually
                 var eventRequest = new EventCreateRequestModel
                 {
                     EventDetails = eventDetails,
                     EventArtists = eventArtists,
                     EventGalleries = eventGalleries,
-                    BannerImageFile = bannerFile
+                    BannerImageFile = bannerFile,
+                    SeatTypes = seatTypes
                 };
 
                 // Get user from form data
@@ -899,6 +917,78 @@ namespace TicketHouseBackend.Controllers.Masters
                     Status = "Error",
                     Message = ex.Message,
                     Data = false
+                };
+            }
+        }
+
+        // Add to EventDetailsController
+        [HttpPost("AddEventSeatTypes")]
+        public async Task<CommonResponseModel<List<EventSeatTypeInventoryModel>>> AddEventSeatTypes(
+            [FromBody] List<EventSeatTypeInventoryModel> seatTypes)
+        {
+            try
+            {
+                if (seatTypes == null || seatTypes.Count == 0)
+                {
+                    return new CommonResponseModel<List<EventSeatTypeInventoryModel>>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Seat types are required"
+                    };
+                }
+
+                // Get user ID from JWT
+                var userIdClaim = User?.FindFirst("userId")?.Value;
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    return new CommonResponseModel<List<EventSeatTypeInventoryModel>>
+                    {
+                        ErrorCode = "401",
+                        Status = "Error",
+                        Message = "User authentication required"
+                    };
+                }
+
+                var result = await _eventDetailsService.AddEventSeatTypesAsync(seatTypes, userIdClaim);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<List<EventSeatTypeInventoryModel>>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                };
+            }
+        }
+
+        [HttpGet("GetEventSeatTypes/{eventId}")]
+        public async Task<CommonResponseModel<List<EventSeatTypeInventoryModel>>> GetEventSeatTypes(int eventId)
+        {
+            try
+            {
+                if (eventId <= 0)
+                {
+                    return new CommonResponseModel<List<EventSeatTypeInventoryModel>>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Valid event ID is required"
+                    };
+                }
+
+                var result = await _eventDetailsService.GetEventSeatTypesAsync(eventId);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<List<EventSeatTypeInventoryModel>>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
                 };
             }
         }

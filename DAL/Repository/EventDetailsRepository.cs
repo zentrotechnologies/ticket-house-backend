@@ -43,6 +43,15 @@ namespace DAL.Repository
         Task<int> AddEventGalleryAsync(EventGalleryModel eventGallery);
         Task<IEnumerable<EventGalleryModel>> GetEventGalleriesByEventIdAsync(int eventId);
         Task<int> DeleteAllEventGalleriesAsync(int eventId, string updatedBy);
+
+        // Seat Type Methods
+        Task<int> AddEventSeatTypeAsync(EventSeatTypeInventoryModel seatType);
+        Task<IEnumerable<EventSeatTypeInventoryModel>> GetEventSeatTypesByEventIdAsync(int eventId);
+        Task<EventSeatTypeInventoryModel> GetEventSeatTypeByIdAsync(int seatTypeId);
+        Task<int> UpdateEventSeatTypeAsync(EventSeatTypeInventoryModel seatType);
+        Task<int> UpdateEventSeatTypeAvailabilityAsync(int seatTypeId, int quantityChange, string updatedBy);
+        Task<int> DeleteEventSeatTypeAsync(int seatTypeId, string updatedBy);
+        Task<int> DeleteAllEventSeatTypesAsync(int eventId, string updatedBy);
     }
     public class EventDetailsRepository: IEventDetailsRepository
     {
@@ -50,6 +59,7 @@ namespace DAL.Repository
         private readonly string events = DatabaseConfiguration.events;
         private readonly string event_media = DatabaseConfiguration.event_media;
         private readonly string EventOrganizer = DatabaseConfiguration.EventOrganizer;
+        private readonly string event_seat_type_inventory = DatabaseConfiguration.event_seat_type_inventory;
         private readonly string Users = DatabaseConfiguration.Users;
 
         public EventDetailsRepository(ITHDBConnection dbConnection)
@@ -805,6 +815,136 @@ namespace DAL.Repository
             using var connection = _dbConnection.GetConnection();
             var query = $@"
             UPDATE event_gallary 
+            SET active = 0,
+                updated_by = @updated_by,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE event_id = @event_id AND active = 1";
+
+            var affectedRows = await connection.ExecuteAsync(query, new
+            {
+                event_id = eventId,
+                updated_by = updatedBy
+            });
+
+            return affectedRows;
+        }
+
+        // Seat Type Methods
+        public async Task<int> AddEventSeatTypeAsync(EventSeatTypeInventoryModel seatType)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            INSERT INTO {event_seat_type_inventory} 
+            (event_id, seat_name, price, total_seats, available_seats, created_by, updated_by)
+            VALUES 
+            (@event_id, @seat_name, @price, @total_seats, @total_seats, @created_by, @updated_by)
+            RETURNING event_seat_type_inventory_id";
+
+            var seatTypeId = await connection.ExecuteScalarAsync<int>(query, new
+            {
+                event_id = seatType.event_id,
+                seat_name = seatType.seat_name,
+                price = seatType.price,
+                total_seats = seatType.total_seats,
+                created_by = seatType.created_by,
+                updated_by = seatType.updated_by
+            });
+
+            return seatTypeId;
+        }
+
+        public async Task<IEnumerable<EventSeatTypeInventoryModel>> GetEventSeatTypesByEventIdAsync(int eventId)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            SELECT * FROM {event_seat_type_inventory} 
+            WHERE event_id = @EventId AND active = 1 
+            ORDER BY price DESC";
+
+            return await connection.QueryAsync<EventSeatTypeInventoryModel>(query, new { EventId = eventId });
+        }
+
+        public async Task<EventSeatTypeInventoryModel> GetEventSeatTypeByIdAsync(int seatTypeId)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            SELECT * FROM {event_seat_type_inventory} 
+            WHERE event_seat_type_inventory_id = @SeatTypeId AND active = 1";
+
+            return await connection.QueryFirstOrDefaultAsync<EventSeatTypeInventoryModel>(query,
+                new { SeatTypeId = seatTypeId });
+        }
+
+        public async Task<int> UpdateEventSeatTypeAsync(EventSeatTypeInventoryModel seatType)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            UPDATE {event_seat_type_inventory} 
+            SET seat_name = @seat_name,
+                price = @price,
+                total_seats = @total_seats,
+                updated_by = @updated_by,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE event_seat_type_inventory_id = @event_seat_type_inventory_id AND active = 1";
+
+            var affectedRows = await connection.ExecuteAsync(query, new
+            {
+                event_seat_type_inventory_id = seatType.event_seat_type_inventory_id,
+                seat_name = seatType.seat_name,
+                price = seatType.price,
+                total_seats = seatType.total_seats,
+                updated_by = seatType.updated_by
+            });
+
+            return affectedRows;
+        }
+
+        public async Task<int> UpdateEventSeatTypeAvailabilityAsync(int seatTypeId, int quantityChange, string updatedBy)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            UPDATE {event_seat_type_inventory} 
+            SET available_seats = available_seats + @quantityChange,
+                updated_by = @updated_by,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE event_seat_type_inventory_id = @seat_type_id 
+                AND active = 1
+                AND available_seats + @quantityChange >= 0";
+
+            var affectedRows = await connection.ExecuteAsync(query, new
+            {
+                seat_type_id = seatTypeId,
+                quantityChange = quantityChange,
+                updated_by = updatedBy
+            });
+
+            return affectedRows;
+        }
+
+        public async Task<int> DeleteEventSeatTypeAsync(int seatTypeId, string updatedBy)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            UPDATE {event_seat_type_inventory} 
+            SET active = 0,
+                updated_by = @updated_by,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE event_seat_type_inventory_id = @seat_type_id AND active = 1";
+
+            var affectedRows = await connection.ExecuteAsync(query, new
+            {
+                seat_type_id = seatTypeId,
+                updated_by = updatedBy
+            });
+
+            return affectedRows;
+        }
+
+        public async Task<int> DeleteAllEventSeatTypesAsync(int eventId, string updatedBy)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            UPDATE {event_seat_type_inventory} 
             SET active = 0,
                 updated_by = @updated_by,
                 updated_on = CURRENT_TIMESTAMP

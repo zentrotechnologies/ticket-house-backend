@@ -26,6 +26,13 @@ namespace BAL.Services
         Task<CommonResponseModel<IEnumerable<EventWithMediaResponse>>> GetEventsWithMediaByCategoryAsync(int categoryId);
         Task<CommonResponseModel<IEnumerable<EventWithMediaResponse>>> GetUpcomingEventsWithMediaAsync(int days = 30);
         Task<CommonResponseModel<IEnumerable<EventWithMediaResponse>>> GetFeaturedEventsWithMediaAsync();
+
+        // Seat Type Methods
+        Task<CommonResponseModel<List<EventSeatTypeInventoryModel>>> AddEventSeatTypesAsync(
+            List<EventSeatTypeInventoryModel> seatTypes, string createdBy);
+        Task<CommonResponseModel<List<EventSeatTypeInventoryModel>>> GetEventSeatTypesAsync(int eventId);
+        Task<CommonResponseModel<bool>> UpdateEventSeatTypeAsync(EventSeatTypeInventoryModel seatType);
+        Task<CommonResponseModel<bool>> DeleteEventSeatTypeAsync(int seatTypeId, string updatedBy);
     }
     public class EventDetailsService: IEventDetailsService
     {
@@ -539,6 +546,150 @@ namespace BAL.Services
             }
 
             return Guid.Empty;
+        }
+
+        // Seat Type Methods
+        public async Task<CommonResponseModel<List<EventSeatTypeInventoryModel>>> AddEventSeatTypesAsync(
+            List<EventSeatTypeInventoryModel> seatTypes, string createdBy)
+        {
+            var response = new CommonResponseModel<List<EventSeatTypeInventoryModel>>();
+            try
+            {
+                var result = new List<EventSeatTypeInventoryModel>();
+
+                foreach (var seatType in seatTypes)
+                {
+                    seatType.created_by = createdBy;
+                    seatType.updated_by = createdBy;
+                    seatType.available_seats = seatType.total_seats; // Initially all seats are available
+
+                    var seatTypeId = await _eventDetailsRepository.AddEventSeatTypeAsync(seatType);
+                    if (seatTypeId > 0)
+                    {
+                        seatType.event_seat_type_inventory_id = seatTypeId;
+                        result.Add(seatType);
+                    }
+                }
+
+                response.Status = "Success";
+                response.Message = "Seat types added successfully";
+                response.ErrorCode = "0";
+                response.Data = result;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error adding seat types: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<List<EventSeatTypeInventoryModel>>> GetEventSeatTypesAsync(int eventId)
+        {
+            var response = new CommonResponseModel<List<EventSeatTypeInventoryModel>>();
+            try
+            {
+                var seatTypes = await _eventDetailsRepository.GetEventSeatTypesByEventIdAsync(eventId);
+
+                response.Status = "Success";
+                response.Message = "Seat types fetched successfully";
+                response.ErrorCode = "0";
+                response.Data = seatTypes.ToList();
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error fetching seat types: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<bool>> UpdateEventSeatTypeAsync(EventSeatTypeInventoryModel seatType)
+        {
+            var response = new CommonResponseModel<bool>();
+            try
+            {
+                if (seatType == null || seatType.event_seat_type_inventory_id <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid seat type is required";
+                    response.ErrorCode = "400";
+                    response.Data = false;
+                    return response;
+                }
+
+                var affectedRows = await _eventDetailsRepository.UpdateEventSeatTypeAsync(seatType);
+
+                if (affectedRows > 0)
+                {
+                    response.Status = "Success";
+                    response.Message = "Seat type updated successfully";
+                    response.ErrorCode = "0";
+                    response.Data = true;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "Failed to update seat type";
+                    response.ErrorCode = "1";
+                    response.Data = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error updating seat type: {ex.Message}";
+                response.ErrorCode = "1";
+                response.Data = false;
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<bool>> DeleteEventSeatTypeAsync(int seatTypeId, string updatedBy)
+        {
+            var response = new CommonResponseModel<bool>();
+            try
+            {
+                if (seatTypeId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid seat type ID is required";
+                    response.ErrorCode = "400";
+                    response.Data = false;
+                    return response;
+                }
+
+                var affectedRows = await _eventDetailsRepository.DeleteEventSeatTypeAsync(seatTypeId, updatedBy);
+
+                if (affectedRows > 0)
+                {
+                    response.Status = "Success";
+                    response.Message = "Seat type deleted successfully";
+                    response.ErrorCode = "0";
+                    response.Data = true;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "Failed to delete seat type";
+                    response.ErrorCode = "1";
+                    response.Data = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error deleting seat type: {ex.Message}";
+                response.ErrorCode = "1";
+                response.Data = false;
+            }
+
+            return response;
         }
     }
 }
