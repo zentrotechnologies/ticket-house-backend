@@ -84,4 +84,11 @@ namespace MODEL.Response
     {
         public int Count { get; set; } = 5;
     }
+
+    public class SimilarEventsRequest
+    {
+        public int CategoryId { get; set; }
+        public int ExcludeEventId { get; set; }
+        public int Count { get; set; } = 4;
+    }
 }

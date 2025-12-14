@@ -1,6 +1,7 @@
 ﻿using DAL.Utilities;
 using Dapper;
 using MODEL.Configuration;
+using MODEL.Entities;
 using MODEL.Response;
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,8 @@ namespace DAL.Repository
         Task<IEnumerable<UpcomingEventResponse>> GetUpcomingEventsAsync(UpcomingEventsRequest request);
         Task<IEnumerable<ArtistResponse>> GetShowsByArtistsAsync(GetShowsByArtistsRequest request);
         Task<IEnumerable<TestimonialResponse>> GetTestimonialsByArtistsAsync();
+        Task<EventDetailsModel> GetEventDetailsByIdAsync(int eventId);
+        Task<IEnumerable<UpcomingEventResponse>> GetSimilarEventsByCategoryAsync(int categoryId, int excludeEventId, int count);
     }
     public class UserEventsRepository: IUserEventsRepository
     {
@@ -135,6 +138,53 @@ namespace DAL.Repository
                 ORDER BY created_on DESC";
 
             return await connection.QueryAsync<TestimonialResponse>(query);
+        }
+
+        public async Task<EventDetailsModel> GetEventDetailsByIdAsync(int eventId)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            var query = $@"
+                SELECT 
+                    e.*,
+                    ec.event_category_name
+                FROM {events} e
+                LEFT JOIN event_category ec ON e.event_category_id = ec.event_category_id
+                WHERE e.event_id = @EventId AND e.active = 1";
+
+            return await connection.QueryFirstOrDefaultAsync<EventDetailsModel>(query, new { EventId = eventId });
+        }
+
+        public async Task<IEnumerable<UpcomingEventResponse>> GetSimilarEventsByCategoryAsync(int categoryId, int excludeEventId, int count)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            var query = $@"
+                SELECT 
+                    event_id,
+                    event_name,
+                    event_date,
+                    TO_CHAR(start_time, 'HH12:MI AM') as start_time,
+                    TO_CHAR(end_time, 'HH12:MI AM') as end_time,
+                    location,
+                    banner_image,
+                    TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
+                FROM {events}
+                WHERE active = 1 
+                AND event_date >= CURRENT_DATE
+                AND event_category_id = @CategoryId
+                AND event_id != @ExcludeEventId
+                ORDER BY event_date ASC, start_time ASC
+                LIMIT @Count";
+
+            var parameters = new
+            {
+                CategoryId = categoryId,
+                ExcludeEventId = excludeEventId,
+                Count = count
+            };
+
+            return await connection.QueryAsync<UpcomingEventResponse>(query, parameters);
         }
     }
 }

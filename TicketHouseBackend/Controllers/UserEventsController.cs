@@ -1,6 +1,7 @@
 ﻿using BAL.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MODEL.Entities;
 using MODEL.Response;
 
 namespace TicketHouseBackend.Controllers
@@ -112,6 +113,62 @@ namespace TicketHouseBackend.Controllers
             };
 
             return await GetShowsByArtists(request);
+        }
+
+        [HttpGet("GetEventDetailsById/{eventId}")]
+        public async Task<CommonResponseModel<EventDetailsModel>> GetEventDetailsById(int eventId)
+        {
+            try
+            {
+                if (eventId <= 0)
+                {
+                    return new CommonResponseModel<EventDetailsModel>
+                    {
+                        Status = "Failure",
+                        Message = "Valid event ID is required",
+                        ErrorCode = "400"
+                    };
+                }
+
+                return await _userEventsService.GetEventDetailsByIdAsync(eventId);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<EventDetailsModel>
+                {
+                    Status = "Error",
+                    Message = $"Error in GetEventDetailsById: {ex.Message}",
+                    ErrorCode = "1"
+                };
+            }
+        }
+
+        [HttpPost("GetSimilarEventsByCategory")]
+        public async Task<CommonResponseModel<IEnumerable<UpcomingEventResponse>>> GetSimilarEventsByCategory([FromBody] SimilarEventsRequest request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return new CommonResponseModel<IEnumerable<UpcomingEventResponse>>
+                    {
+                        Status = "Failure",
+                        Message = "Request data is required",
+                        ErrorCode = "400"
+                    };
+                }
+
+                return await _userEventsService.GetSimilarEventsByCategoryAsync(request);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<IEnumerable<UpcomingEventResponse>>
+                {
+                    Status = "Error",
+                    Message = $"Error in GetSimilarEventsByCategory: {ex.Message}",
+                    ErrorCode = "1"
+                };
+            }
         }
     }
 }
