@@ -171,17 +171,20 @@ namespace DAL.Repository
                 artists = "[]";
             }
 
+            // **FIX: Handle banner_image - ensure it's not null**
+            var bannerImage = eventDetails.banner_image ?? "";
+
             var query = $@"
                 INSERT INTO {events} 
                 (organizer_id, event_name, event_description, event_date, start_time, end_time,
                  total_duration_minutes, location, full_address, geo_map_url, latitude, longitude,
                  language, event_category_id, banner_image, gallery_media, age_limit, artists,
-                 terms_and_conditions, min_price, max_price, is_featured, status, created_by, updated_by)
+                 terms_and_conditions, min_price, max_price, is_featured, status, no_of_seats, created_by, updated_by)
                 VALUES 
                 (@organizer_id, @event_name, @event_description, @event_date, @start_time, @end_time,
                  @total_duration_minutes, @location, @full_address, @geo_map_url, @latitude, @longitude,
                  @language, @event_category_id, @banner_image, @gallery_media::json, @age_limit, @artists::json,
-                 @terms_and_conditions, @min_price, @max_price, @is_featured, @status, @created_by, @updated_by)
+                 @terms_and_conditions, @min_price, @max_price, @is_featured, @status, @no_of_seats, @created_by, @updated_by)
                 RETURNING event_id";
 
             var eventId = await connection.ExecuteScalarAsync<int>(query, new
@@ -200,7 +203,8 @@ namespace DAL.Repository
                 longitude = eventDetails.longitude,
                 language = eventDetails.language,
                 event_category_id = eventDetails.event_category_id,
-                banner_image = eventDetails.banner_image,
+                //banner_image = eventDetails.banner_image,
+                banner_image = bannerImage,
                 gallery_media = galleryMedia, // Use parsed JSON
                 age_limit = eventDetails.age_limit,
                 artists = artists, // Use parsed JSON
@@ -209,6 +213,7 @@ namespace DAL.Repository
                 max_price = eventDetails.max_price,
                 is_featured = eventDetails.is_featured,
                 status = eventDetails.status,
+                no_of_seats = eventDetails.no_of_seats,
                 created_by = eventDetails.created_by,
                 updated_by = eventDetails.updated_by
             });
@@ -350,6 +355,7 @@ namespace DAL.Repository
                     max_price = @max_price,
                     is_featured = @is_featured,
                     status = @status,
+                    no_of_seats = @no_of_seats,
                     updated_by = @updated_by,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE event_id = @event_id AND active = 1";
@@ -380,6 +386,7 @@ namespace DAL.Repository
                 max_price = eventDetails.max_price,
                 is_featured = eventDetails.is_featured,
                 status = eventDetails.status,
+                no_of_seats = eventDetails.no_of_seats,
                 updated_by = eventDetails.updated_by
             });
 
@@ -620,6 +627,7 @@ namespace DAL.Repository
                     e.max_price,
                     e.is_featured,
                     e.status,
+                    e.no_of_seats,
                     e.created_by,
                     e.created_at,
                     e.updated_by,
@@ -652,6 +660,7 @@ namespace DAL.Repository
                     max_price = g.Key.max_price,
                     is_featured = g.Key.is_featured,
                     status = g.Key.status,
+                    no_of_seats = g.Key.no_of_seats,
                     created_by = g.Key.created_by,
                     created_at = g.Key.created_at,
                     updated_by = g.Key.updated_by,

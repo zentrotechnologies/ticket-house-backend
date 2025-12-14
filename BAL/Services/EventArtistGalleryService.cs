@@ -377,7 +377,24 @@ namespace BAL.Services
                 // Set default status if not provided
                 if (string.IsNullOrEmpty(eventRequest.EventDetails.status))
                 {
-                    eventRequest.EventDetails.status = "draft";
+                    eventRequest.EventDetails.status = "active";
+                }
+
+                // **Handle banner image as Base64 - CRITICAL FIX**
+                if (eventRequest.BannerImageFile != null && eventRequest.BannerImageFile.Length > 0)
+                {
+                    using var memoryStream = new MemoryStream();
+                    await eventRequest.BannerImageFile.CopyToAsync(memoryStream);
+                    var bannerBytes = memoryStream.ToArray();
+                    var bannerBase64 = Convert.ToBase64String(bannerBytes);
+
+                    // Store as Base64 string in the banner_image field
+                    eventRequest.EventDetails.banner_image = $"data:image/png;base64,{bannerBase64}";
+                }
+                else
+                {
+                    // If no banner image, set to empty string
+                    eventRequest.EventDetails.banner_image = "";
                 }
 
                 // Create event in database
@@ -639,21 +656,38 @@ namespace BAL.Services
                 );
 
                 // Upload and update banner if provided
+                //if (eventRequest.BannerImageFile != null && eventRequest.BannerImageFile.Length > 0)
+                //{
+                //    var bannerUrl = await UploadEventBannerAsync(
+                //        eventRequest.BannerImageFile,
+                //        eventRequest.EventDetails.event_id,
+                //        webRootPath);
+
+                //    if (bannerUrl.Status == "Success")
+                //    {
+                //        eventRequest.EventDetails.banner_image = bannerUrl.Data;
+                //    }
+                //}
+                //else
+                //{
+                //    // Keep existing banner
+                //    eventRequest.EventDetails.banner_image = existingEvent.banner_image;
+                //}
+
+                // **Handle banner image as Base64**
                 if (eventRequest.BannerImageFile != null && eventRequest.BannerImageFile.Length > 0)
                 {
-                    var bannerUrl = await UploadEventBannerAsync(
-                        eventRequest.BannerImageFile,
-                        eventRequest.EventDetails.event_id,
-                        webRootPath);
+                    using var memoryStream = new MemoryStream();
+                    await eventRequest.BannerImageFile.CopyToAsync(memoryStream);
+                    var bannerBytes = memoryStream.ToArray();
+                    var bannerBase64 = Convert.ToBase64String(bannerBytes);
 
-                    if (bannerUrl.Status == "Success")
-                    {
-                        eventRequest.EventDetails.banner_image = bannerUrl.Data;
-                    }
+                    // Store as Base64 string in the banner_image field
+                    eventRequest.EventDetails.banner_image = $"data:image/png;base64,{bannerBase64}";
                 }
                 else
                 {
-                    // Keep existing banner
+                    // Keep existing banner if not updating
                     eventRequest.EventDetails.banner_image = existingEvent.banner_image;
                 }
 
