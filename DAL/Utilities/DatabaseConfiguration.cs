@@ -21,5 +21,7 @@ namespace DAL.Utilities
         public static string event_gallary = DB_SCHEMA + "event_gallary";
         public static string event_artist = DB_SCHEMA + "event_artist";
         public static string event_seat_type_inventory = DB_SCHEMA + "event_seat_type_inventory";
+        public static string booking = "booking";
+        public static string booking_seat = "booking_seat";
     }
 }
