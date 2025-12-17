@@ -16,6 +16,7 @@ namespace BAL.Services
         Task<CommonResponseModel<IEnumerable<TestimonialResponse>>> GetTestimonialsByArtistsAsync();
         Task<CommonResponseModel<EventDetailsModel>> GetEventDetailsByIdAsync(int eventId);
         Task<CommonResponseModel<IEnumerable<UpcomingEventResponse>>> GetSimilarEventsByCategoryAsync(SimilarEventsRequest request);
+        Task<CommonResponseModel<decimal?>> GetEventPriceInRangeAsync(int eventId);
     }
     public class UserEventsService: IUserEventsService
     {
@@ -196,6 +197,37 @@ namespace BAL.Services
             {
                 response.Status = "Failure";
                 response.Message = $"Error fetching similar events: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<decimal?>> GetEventPriceInRangeAsync(int eventId)
+        {
+            var response = new CommonResponseModel<decimal?>();
+
+            try
+            {
+                if (eventId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid event ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                var price = await _userEventsRepository.GetEventPriceInRangeAsync(eventId);
+
+                response.Status = "Success";
+                response.Message = price.HasValue ? "Price fetched successfully" : "No price found in range";
+                response.ErrorCode = "0";
+                response.Data = price;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error fetching price: {ex.Message}";
                 response.ErrorCode = "1";
             }
 

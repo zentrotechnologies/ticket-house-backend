@@ -170,5 +170,33 @@ namespace TicketHouseBackend.Controllers
                 };
             }
         }
+
+        [HttpGet("GetEventPriceInRange/{eventId}")]
+        public async Task<CommonResponseModel<decimal?>> GetEventPriceInRange(int eventId)
+        {
+            try
+            {
+                if (eventId <= 0)
+                {
+                    return new CommonResponseModel<decimal?>
+                    {
+                        Status = "Failure",
+                        Message = "Valid event ID is required",
+                        ErrorCode = "400"
+                    };
+                }
+
+                return await _userEventsService.GetEventPriceInRangeAsync(eventId);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<decimal?>
+                {
+                    Status = "Error",
+                    Message = $"Error in GetEventPriceInRange: {ex.Message}",
+                    ErrorCode = "1"
+                };
+            }
+        }
     }
 }
