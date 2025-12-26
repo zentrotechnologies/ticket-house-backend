@@ -33,6 +33,7 @@ namespace DAL.Repository
         // Booking with details
         Task<BookingDetailsResponse> GetBookingDetailsAsync(int bookingId);
         Task<BookingDetailsResponse> GetBookingDetailsByCodeAsync(string bookingCode);
+        Task<IEnumerable<MyBookingsResponse>> GetMyBookingsByUserIdAsync(Guid userId);
     }
     public class BookingRepository: IBookingRepository
     {
@@ -394,6 +395,58 @@ namespace DAL.Repository
             }
 
             return bookingDetails;
+        }
+
+        public async Task<IEnumerable<MyBookingsResponse>> GetMyBookingsByUserIdAsync(Guid userId)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            // Query to get bookings with event details
+            var query = $@"
+            SELECT 
+                b.booking_id,
+                b.booking_code,
+                b.user_id,
+                b.event_id,
+                b.total_amount,
+                b.status,
+                b.created_on,
+                e.event_name,
+                e.event_date,
+                e.start_time,
+                e.end_time,
+                e.location,
+                e.banner_image
+            FROM {booking} b
+            INNER JOIN {events} e ON b.event_id = e.event_id
+            WHERE b.user_id = @UserId 
+            AND b.active = 1
+            AND e.active = 1
+            ORDER BY b.created_on DESC";
+
+            var bookings = await connection.QueryAsync<MyBookingsResponse>(query, new { UserId = userId });
+
+            // Get booking seats for each booking
+            foreach (var booking in bookings)
+            {
+                var seatsQuery = $@"
+            SELECT 
+                bs.*,
+                esti.seat_name
+            FROM {booking_seat} bs
+            INNER JOIN {event_seat_type_inventory} esti 
+                ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id
+            WHERE bs.booking_id = @BookingId 
+            AND bs.active = 1
+            AND esti.active = 1";
+
+                var seats = await connection.QueryAsync<BookingSeatResponse>(seatsQuery,
+                    new { BookingId = booking.booking_id });
+
+                booking.BookingSeats = seats.ToList();
+            }
+
+            return bookings;
         }
     }
 }

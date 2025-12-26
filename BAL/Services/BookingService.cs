@@ -28,6 +28,7 @@ namespace BAL.Services
 
         // Check seat availability
         Task<CommonResponseModel<bool>> CheckSeatAvailabilityAsync(SeatAvailabilityRequest request);
+        Task<CommonResponseModel<List<MyBookingsResponse>>> GetMyBookingsByUserIdAsync(Guid userId);
     }
     public class BookingService: IBookingService
     {
@@ -103,6 +104,17 @@ namespace BAL.Services
                         response.Message = $"Not enough seats available for {seatType?.seat_name}";
                         response.ErrorCode = "400";
                         return response;
+                    }
+                }
+
+                // Get user by email for user_id if user is logged in
+                string updatedBy = "guest";
+                if (userEmail != "guest")
+                {
+                    var user = await _authRepository.GetUserByEmail(userEmail);
+                    if (user != null)
+                    {
+                        updatedBy = user.user_id.ToString();
                     }
                 }
 
@@ -208,10 +220,18 @@ namespace BAL.Services
                 }
 
                 // Temporarily reserve seats
+                //foreach (var seatSelection in request.SeatSelections)
+                //{
+                //    await _bookingRepository.ReserveSeatsAsync(
+                //        seatSelection.SeatTypeId, seatSelection.Quantity, userEmail);
+                //}
+
+                // Temporarily reserve seats - pass user_id as string
+                string userIdString = user.user_id.ToString();
                 foreach (var seatSelection in request.SeatSelections)
                 {
                     await _bookingRepository.ReserveSeatsAsync(
-                        seatSelection.SeatTypeId, seatSelection.Quantity, userEmail);
+                        seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
                 }
 
                 // Calculate total amount
@@ -236,8 +256,10 @@ namespace BAL.Services
                     event_id = request.EventId,
                     total_amount = totalAmount,
                     status = "pending", // Will be confirmed after payment
-                    created_by = userEmail,
-                    updated_by = userEmail
+                    //created_by = userEmail,
+                    //updated_by = userEmail
+                    created_by = userIdString,
+                    updated_by = userIdString
                 };
 
                 var bookingId = await _bookingRepository.CreateBookingAsync(booking);
@@ -257,8 +279,10 @@ namespace BAL.Services
                             quantity = seatSelection.Quantity,
                             price_per_seat = seatType.price,
                             subtotal = subtotal,
-                            created_by = userEmail,
-                            updated_by = userEmail
+                            //created_by = userEmail,
+                            //updated_by = userEmail
+                            created_by = userIdString,
+                            updated_by = userIdString
                         };
 
                         bookingSeats.Add(bookingSeat);
@@ -285,11 +309,18 @@ namespace BAL.Services
                 }
                 else
                 {
+                    //// Release reserved seats if booking creation failed
+                    //foreach (var seatSelection in request.SeatSelections)
+                    //{
+                    //    await _bookingRepository.ReleaseSeatsAsync(
+                    //        seatSelection.SeatTypeId, seatSelection.Quantity, userEmail);
+                    //}
+
                     // Release reserved seats if booking creation failed
                     foreach (var seatSelection in request.SeatSelections)
                     {
                         await _bookingRepository.ReleaseSeatsAsync(
-                            seatSelection.SeatTypeId, seatSelection.Quantity, userEmail);
+                            seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
                     }
 
                     response.Status = "Failure";
@@ -630,6 +661,37 @@ namespace BAL.Services
                 response.Message = $"Error checking seat availability: {ex.Message}";
                 response.ErrorCode = "1";
                 response.Data = false;
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<List<MyBookingsResponse>>> GetMyBookingsByUserIdAsync(Guid userId)
+        {
+            var response = new CommonResponseModel<List<MyBookingsResponse>>();
+
+            try
+            {
+                if (userId == Guid.Empty)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid user ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                var bookings = await _bookingRepository.GetMyBookingsByUserIdAsync(userId);
+
+                response.Status = "Success";
+                response.Message = "Bookings fetched successfully";
+                response.ErrorCode = "0";
+                response.Data = bookings.ToList();
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error fetching bookings: {ex.Message}";
+                response.ErrorCode = "1";
             }
 
             return response;

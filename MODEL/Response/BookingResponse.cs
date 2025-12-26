@@ -65,4 +65,26 @@ namespace MODEL.Response
         public decimal price_per_seat { get; set; }
         public decimal subtotal { get; set; }
     }
+
+    public class MyBookingsResponse
+    {
+        public int booking_id { get; set; }
+        public string booking_code { get; set; }
+        public Guid user_id { get; set; }
+        public int event_id { get; set; }
+        public decimal total_amount { get; set; }
+        public string status { get; set; }
+        public DateTime created_on { get; set; }
+
+        // Event Details
+        public string event_name { get; set; }
+        public DateTime event_date { get; set; }
+        public string start_time { get; set; }
+        public string end_time { get; set; }
+        public string location { get; set; }
+        public string banner_image { get; set; }
+
+        // Booking Seats
+        public List<BookingSeatResponse> BookingSeats { get; set; } = new List<BookingSeatResponse>();
+    }
 }

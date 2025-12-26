@@ -330,5 +330,56 @@ namespace TicketHouseBackend.Controllers
             return _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value ??
                    _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value;
         }
+
+        [HttpGet("GetMyBookingsByUserId/{userId}")]
+        public async Task<CommonResponseModel<List<MyBookingsResponse>>> GetMyBookingsByUserId(Guid userId)
+        {
+            try
+            {
+                if (userId == Guid.Empty)
+                {
+                    return new CommonResponseModel<List<MyBookingsResponse>>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Valid user ID is required"
+                    };
+                }
+
+                // Optional: Verify the requesting user has access to these bookings
+                var currentUserIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value;
+                if (string.IsNullOrEmpty(currentUserIdClaim) || !Guid.TryParse(currentUserIdClaim, out Guid currentUserId))
+                {
+                    return new CommonResponseModel<List<MyBookingsResponse>>
+                    {
+                        ErrorCode = "401",
+                        Status = "Error",
+                        Message = "User authentication required"
+                    };
+                }
+
+                // Optional: Check if user is requesting their own bookings (for security)
+                if (currentUserId != userId)
+                {
+                    return new CommonResponseModel<List<MyBookingsResponse>>
+                    {
+                        ErrorCode = "403",
+                        Status = "Error",
+                        Message = "Access denied"
+                    };
+                }
+
+                return await _bookingService.GetMyBookingsByUserIdAsync(userId);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<List<MyBookingsResponse>>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                };
+            }
+        }
     }
 }
