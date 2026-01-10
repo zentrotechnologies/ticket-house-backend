@@ -34,4 +34,9 @@ namespace MODEL.Request
         public int SeatTypeId { get; set; }
         public int Quantity { get; set; }
     }
+
+    public class QRCodeDecodeRequest
+    {
+        public string QRCodeBase64 { get; set; }
+    }
 }

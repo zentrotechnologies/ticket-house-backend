@@ -77,6 +77,7 @@ builder.Services.AddScoped<IEventDetailsService, EventDetailsService>();
 builder.Services.AddScoped<IEventArtistGalleryService, EventArtistGalleryService>();
 builder.Services.AddScoped<IUserEventsService, UserEventsService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IQRCodeService, QRCodeService>();
 
 // File upload helper
 builder.Services.AddScoped<IFileUploadHelper, EventFileUploadHelper>();

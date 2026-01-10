@@ -381,5 +381,77 @@ namespace TicketHouseBackend.Controllers
                 };
             }
         }
+
+        //bookings with QR
+
+        [HttpPost("ConfirmBookingWithQR/{bookingId}")]
+        [Authorize]
+        public async Task<CommonResponseModel<BookingQRResponse>> ConfirmBookingWithQR(int bookingId)
+        {
+            try
+            {
+                // Add validation at the beginning
+                if (bookingId <= 0)
+                {
+                    return new CommonResponseModel<BookingQRResponse>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Valid booking ID is required. Received: " + bookingId
+                    };
+                }
+
+                var userEmail = GetCurrentUserEmail();
+                if (string.IsNullOrEmpty(userEmail))
+                {
+                    return new CommonResponseModel<BookingQRResponse>
+                    {
+                        ErrorCode = "401",
+                        Status = "Error",
+                        Message = "User authentication required"
+                    };
+                }
+
+                return await _bookingService.ConfirmBookingWithQRAsync(bookingId, userEmail);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<BookingQRResponse>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                };
+            }
+        }
+
+        [HttpPost("DecodeQRCode")]
+        [AllowAnonymous]
+        public async Task<CommonResponseModel<QRCodeDataResponse>> DecodeQRCode([FromBody] QRCodeDecodeRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(request?.QRCodeBase64))
+                {
+                    return new CommonResponseModel<QRCodeDataResponse>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "QR code data is required"
+                    };
+                }
+
+                return await _bookingService.DecodeQRCodeDataAsync(request.QRCodeBase64);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<QRCodeDataResponse>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                };
+            }
+        }
     }
 }

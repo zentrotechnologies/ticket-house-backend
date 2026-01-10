@@ -29,21 +29,29 @@ namespace BAL.Services
         // Check seat availability
         Task<CommonResponseModel<bool>> CheckSeatAvailabilityAsync(SeatAvailabilityRequest request);
         Task<CommonResponseModel<List<MyBookingsResponse>>> GetMyBookingsByUserIdAsync(Guid userId);
+        Task<CommonResponseModel<BookingQRResponse>> ConfirmBookingWithQRAsync(int bookingId, string userEmail);
+        Task<CommonResponseModel<QRCodeDataResponse>> DecodeQRCodeDataAsync(string qrCodeBase64);
     }
     public class BookingService: IBookingService
     {
         private readonly IBookingRepository _bookingRepository;
         private readonly IEventDetailsRepository _eventDetailsRepository;
         private readonly IUserRepository _authRepository;
+        private readonly IQRCodeService _qrCodeService;
+        private readonly IEmailService _emailService; // Assuming you have an email service
 
         public BookingService(
             IBookingRepository bookingRepository,
             IEventDetailsRepository eventDetailsRepository,
-            IUserRepository authRepository)
+            IUserRepository authRepository,
+            IQRCodeService qrCodeService,
+            IEmailService emailService)
         {
             _bookingRepository = bookingRepository;
             _eventDetailsRepository = eventDetailsRepository;
             _authRepository = authRepository;
+            _qrCodeService = qrCodeService;
+            _emailService = emailService;
         }
 
         public async Task<CommonResponseModel<List<EventSeatTypeInventoryModel>>> GetAvailableSeatsByEventIdAsync(int eventId)
@@ -695,6 +703,498 @@ namespace BAL.Services
             }
 
             return response;
+        }
+
+        // Add this new method for confirming booking with QR code
+        public async Task<CommonResponseModel<BookingQRResponse>> ConfirmBookingWithQRAsync(int bookingId, string userEmail)
+        {
+            var response = new CommonResponseModel<BookingQRResponse>();
+
+            try
+            {
+                if (bookingId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid booking ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                var booking = await _bookingRepository.GetBookingByIdAsync(bookingId);
+                if (booking == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Booking not found";
+                    response.ErrorCode = "404";
+                    return response;
+                }
+
+                // Get booking details
+                var bookingDetails = await _bookingRepository.GetBookingDetailsAsync(bookingId);
+                if (bookingDetails == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Booking details not found";
+                    response.ErrorCode = "404";
+                    return response;
+                }
+
+                var seatUpdates = new List<SeatUpdateRequest>();
+                foreach (var seat in bookingDetails.BookingSeats)
+                {
+                    seatUpdates.Add(new SeatUpdateRequest
+                    {
+                        SeatTypeId = seat.event_seat_type_inventory_id,
+                        Quantity = seat.quantity
+                    });
+                }
+
+                // Update booking status and reduce seat availability
+                var affectedRows = await _bookingRepository.UpdateBookingStatusAndSeatsAsync(
+                    bookingId, "confirmed", seatUpdates, userEmail);
+
+                if (affectedRows > 0)
+                {
+                    // Get updated booking details
+                    var updatedBookingDetails = await _bookingRepository.GetBookingDetailsAsync(bookingId);
+
+                    // Generate QR code
+                    string qrCodeBase64 = await _qrCodeService.GenerateBookingQRCodeAsync(bookingId, updatedBookingDetails);
+
+                    // Get event details
+                    var eventDetails = await _eventDetailsRepository.GetEventByIdAsync(updatedBookingDetails.event_id);
+
+                    // Prepare thank you message
+                    string thankYouMessage = $"Thank you for booking {updatedBookingDetails.event_name}!\n\n" +
+                                           $"Your booking #{updatedBookingDetails.booking_code} has been confirmed.\n" +
+                                           $"Date: {updatedBookingDetails.event_date:dd MMM yyyy}\n" +
+                                           $"Time: {updatedBookingDetails.start_time} - {updatedBookingDetails.end_time}\n" +
+                                           $"Venue: {updatedBookingDetails.location}\n\n" +
+                                           $"Please present this QR code at the venue entry.";
+
+                    var qrResponse = new BookingQRResponse
+                    {
+                        BookingId = bookingId,
+                        BookingCode = updatedBookingDetails.booking_code,
+                        EventId = updatedBookingDetails.event_id,
+                        EventName = eventDetails?.event_name,
+                        TotalAmount = updatedBookingDetails.total_amount,
+                        Status = "confirmed",
+                        CreatedOn = updatedBookingDetails.created_on,
+                        QRCodeBase64 = qrCodeBase64,
+                        ThankYouMessage = thankYouMessage,
+                        BookingDetails = updatedBookingDetails
+                    };
+
+                    // Send email with QR code
+                    await SendBookingConfirmationEmailAsync(updatedBookingDetails, qrCodeBase64, thankYouMessage);
+
+                    response.Status = "Success";
+                    response.Message = "Booking confirmed successfully! QR code generated.";
+                    response.ErrorCode = "0";
+                    response.Data = qrResponse;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "Failed to confirm booking";
+                    response.ErrorCode = "1";
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error confirming booking: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        // Add this method for email sending ----> later replace with html template
+        // Update the SendBookingConfirmationEmailAsync method to remove the isHtml parameter
+        private async Task SendBookingConfirmationEmailAsync(BookingDetailsResponse bookingDetails, string qrCodeBase64, string message)
+        {
+            try
+            {
+                string subject = $"Booking Confirmation - {bookingDetails.event_name}";
+
+                // Create HTML email body
+                string htmlBody = CreateBookingConfirmationEmailHtml(bookingDetails, qrCodeBase64, message);
+
+                // Send email using the EmailService
+                await _emailService.SendEmailAsync(
+                    bookingDetails.email,
+                    subject,
+                    htmlBody
+                );
+            }
+            catch (Exception ex)
+            {
+                // Log email sending error but don't fail the booking
+                // Use proper logging instead of Console.WriteLine in production
+                // Consider injecting ILogger<BookingService> for proper logging
+                // For now, we'll just swallow the exception to not break booking confirmation
+                // In production, implement proper logging
+                var errorMessage = $"Error sending confirmation email: {ex.Message}";
+                // Log error here
+            }
+        }
+
+        private string CreateBookingConfirmationEmailHtml(BookingDetailsResponse bookingDetails, string qrCodeBase64, string message)
+        {
+            return $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                <title>Booking Confirmation</title>
+                <style>
+                    body {{ 
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                        line-height: 1.6; 
+                        color: #333; 
+                        margin: 0;
+                        padding: 20px;
+                        background-color: #f5f5f5;
+                    }}
+                    .container {{ 
+                        max-width: 600px; 
+                        margin: 0 auto; 
+                        background: white;
+                        border-radius: 12px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                    }}
+                    .header {{ 
+                        background: linear-gradient(135deg, #2c2e72 0%, #4896d1 100%); 
+                        color: white; 
+                        padding: 30px 20px; 
+                        text-align: center; 
+                    }}
+                    .header h1 {{
+                        margin: 0;
+                        font-size: 28px;
+                        font-weight: 700;
+                    }}
+                    .header .subtitle {{
+                        font-size: 16px;
+                        opacity: 0.9;
+                        margin-top: 10px;
+                    }}
+                    .content {{ 
+                        padding: 30px; 
+                    }}
+                    .greeting {{
+                        font-size: 18px;
+                        margin-bottom: 20px;
+                        color: #2c2e72;
+                    }}
+                    .message-box {{
+                        background: #eef3ff;
+                        padding: 20px;
+                        border-radius: 8px;
+                        margin-bottom: 25px;
+                        border-left: 4px solid #4896d1;
+                    }}
+                    .message-box p {{
+                        margin: 0;
+                        white-space: pre-line;
+                        line-height: 1.8;
+                    }}
+                    .qr-section {{
+                        text-align: center; 
+                        margin: 30px 0; 
+                        padding: 25px;
+                        background: #f8f9fa;
+                        border-radius: 12px;
+                        border: 2px dashed #4896d1;
+                    }}
+                    .qr-section h3 {{
+                        color: #2c2e72;
+                        margin-bottom: 15px;
+                        font-size: 20px;
+                    }}
+                    .qr-code-container {{
+                        display: inline-block;
+                        padding: 20px;
+                        background: white;
+                        border-radius: 10px;
+                        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+                        margin: 15px 0;
+                    }}
+                    .qr-code-container img {{
+                        width: 200px;
+                        height: 200px;
+                        display: block;
+                    }}
+                    .qr-instruction {{
+                        margin-top: 15px;
+                        color: #666;
+                        font-size: 14px;
+                        font-style: italic;
+                    }}
+                    .details-section {{
+                        margin: 25px 0;
+                    }}
+                    .details-section h4 {{
+                        color: #2c2e72;
+                        margin-bottom: 15px;
+                        font-size: 18px;
+                        border-bottom: 2px solid #e9ecef;
+                        padding-bottom: 8px;
+                    }}
+                    .detail-grid {{
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 15px;
+                        margin-bottom: 20px;
+                    }}
+                    @media (max-width: 480px) {{
+                        .detail-grid {{
+                            grid-template-columns: 1fr;
+                        }}
+                    }}
+                    .detail-item {{
+                        margin-bottom: 12px;
+                    }}
+                    .detail-label {{
+                        font-weight: 600;
+                        color: #2c2e72;
+                        font-size: 14px;
+                        display: block;
+                        margin-bottom: 5px;
+                    }}
+                    .detail-value {{
+                        color: #333;
+                        font-size: 15px;
+                    }}
+                    .seat-details {{
+                        margin-top: 20px;
+                        padding-top: 20px;
+                        border-top: 1px solid #e9ecef;
+                    }}
+                    .seat-item {{
+                        display: flex;
+                        justify-content: space-between;
+                        padding: 10px 0;
+                        border-bottom: 1px solid #f0f0f0;
+                    }}
+                    .seat-item:last-child {{
+                        border-bottom: none;
+                    }}
+                    .footer {{ 
+                        margin-top: 30px; 
+                        padding-top: 20px; 
+                        border-top: 1px solid #ddd; 
+                        text-align: center; 
+                        color: #666;
+                        font-size: 14px;
+                    }}
+                    .footer p {{
+                        margin: 5px 0;
+                    }}
+                    .highlight {{
+                        color: #2c2e72;
+                        font-weight: 600;
+                    }}
+                    .total-amount {{
+                        background: #2c2e72;
+                        color: white;
+                        padding: 15px;
+                        border-radius: 8px;
+                        margin: 20px 0;
+                        text-align: center;
+                        font-size: 20px;
+                        font-weight: 700;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <div class='header'>
+                        <h1>🎉 Booking Confirmed!</h1>
+                        <div class='subtitle'>Your TicketHouse Booking #{bookingDetails.booking_code}</div>
+                    </div>
+            
+                    <div class='content'>
+                        <div class='greeting'>
+                            Dear <span class='highlight'>{bookingDetails.first_name} {bookingDetails.last_name}</span>,
+                        </div>
+                
+                        <div class='message-box'>
+                            <p>{message}</p>
+                        </div>
+                
+                        <div class='qr-section'>
+                            <h3>Your Entry QR Code</h3>
+                            <div class='qr-code-container'>
+                                <img src='data:image/png;base64,{qrCodeBase64}' alt='Booking QR Code' />
+                            </div>
+                            <p class='qr-instruction'>Please present this QR code at the venue for entry</p>
+                        </div>
+                
+                        <div class='details-section'>
+                            <h4>Booking Details</h4>
+                            <div class='detail-grid'>
+                                <div class='detail-item'>
+                                    <span class='detail-label'>Booking Code:</span>
+                                    <span class='detail-value highlight'>{bookingDetails.booking_code}</span>
+                                </div>
+                                <div class='detail-item'>
+                                    <span class='detail-label'>Event:</span>
+                                    <span class='detail-value'>{bookingDetails.event_name}</span>
+                                </div>
+                                <div class='detail-item'>
+                                    <span class='detail-label'>Date:</span>
+                                    <span class='detail-value'>{bookingDetails.event_date:dddd, dd MMMM yyyy}</span>
+                                </div>
+                                <div class='detail-item'>
+                                    <span class='detail-label'>Time:</span>
+                                    <span class='detail-value'>{bookingDetails.start_time} - {bookingDetails.end_time}</span>
+                                </div>
+                                <div class='detail-item'>
+                                    <span class='detail-label'>Venue:</span>
+                                    <span class='detail-value'>{bookingDetails.location}</span>
+                                </div>
+                                <div class='detail-item'>
+                                    <span class='detail-label'>Status:</span>
+                                    <span class='detail-value highlight' style='color: #4CAF50;'>{bookingDetails.status.ToUpper()}</span>
+                                </div>
+                            </div>
+                    
+                            <div class='total-amount'>
+                                Total Amount: ₹{bookingDetails.total_amount}
+                            </div>
+                    
+                            <div class='seat-details'>
+                                <h4>Seat Details</h4>
+                                {string.Join("", bookingDetails.BookingSeats.Select(bs =>
+                                            $"<div class='seat-item'>" +
+                                            $"<span>{bs.seat_name} × {bs.quantity}</span>" +
+                                            $"<span class='highlight'>₹{bs.subtotal}</span>" +
+                                            $"</div>"
+                                        ))}
+                            </div>
+                        </div>
+                
+                        <div class='footer'>
+                            <p>Thank you for choosing <span class='highlight'>TicketHouse</span>!</p>
+                            <p>For any queries, please contact support@tickethouse.in</p>
+                            <p>© {DateTime.Now.Year} TicketHouse. All rights reserved.</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>";
+        }
+
+        // Add this method to decode QR code data
+        public async Task<CommonResponseModel<QRCodeDataResponse>> DecodeQRCodeDataAsync(string qrCodeBase64)
+        {
+            var response = new CommonResponseModel<QRCodeDataResponse>();
+
+            try
+            {
+                if (string.IsNullOrEmpty(qrCodeBase64))
+                {
+                    response.Status = "Failure";
+                    response.Message = "QR code data is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                // Decode the QR code (in real scenario, you'd decode the base64 and parse JSON)
+                // For now, we'll assume the data contains booking ID
+                var bookingDetails = await GetBookingDetailsFromQRAsync(qrCodeBase64);
+
+                if (bookingDetails != null)
+                {
+                    response.Status = "Success";
+                    response.Message = "QR code data decoded successfully";
+                    response.ErrorCode = "0";
+                    response.Data = bookingDetails;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "Invalid QR code data";
+                    response.ErrorCode = "404";
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error decoding QR code: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        private async Task<QRCodeDataResponse> GetBookingDetailsFromQRAsync(string qrCodeBase64)
+        {
+            try
+            {
+                // Decode base64 and parse JSON
+                // This is a simplified version - in production, you'd need proper QR code scanning
+                // For now, we'll extract booking ID from the data
+                var jsonData = DecodeQRCodeBase64(qrCodeBase64);
+                if (!string.IsNullOrEmpty(jsonData))
+                {
+                    var qrData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(jsonData);
+                    if (qrData?.BookingId != null)
+                    {
+                        int bookingId = (int)qrData.BookingId;
+                        var bookingDetails = await _bookingRepository.GetBookingDetailsAsync(bookingId);
+
+                        if (bookingDetails != null)
+                        {
+                            return new QRCodeDataResponse
+                            {
+                                BookingId = bookingDetails.booking_id,
+                                BookingCode = bookingDetails.booking_code,
+                                EventName = bookingDetails.event_name,
+                                EventDate = bookingDetails.event_date,
+                                EventTime = $"{bookingDetails.start_time} - {bookingDetails.end_time}",
+                                Location = bookingDetails.location,
+                                CustomerName = $"{bookingDetails.first_name} {bookingDetails.last_name}",
+                                CustomerEmail = bookingDetails.email,
+                                TotalAmount = bookingDetails.total_amount,
+                                Status = bookingDetails.status,
+                                BookingDate = bookingDetails.created_on,
+                                Seats = bookingDetails.BookingSeats.Select(bs => new QRSeatDetail
+                                {
+                                    SeatType = bs.seat_name,
+                                    Quantity = bs.quantity,
+                                    Price = bs.price_per_seat,
+                                    Subtotal = bs.subtotal
+                                }).ToList(),
+                                Message = "Booking verified successfully!"
+                            };
+                        }
+                    }
+                }
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private string DecodeQRCodeBase64(string base64Data)
+        {
+            try
+            {
+                byte[] data = Convert.FromBase64String(base64Data);
+                return System.Text.Encoding.UTF8.GetString(data);
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

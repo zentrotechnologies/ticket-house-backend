@@ -87,4 +87,44 @@ namespace MODEL.Response
         // Booking Seats
         public List<BookingSeatResponse> BookingSeats { get; set; } = new List<BookingSeatResponse>();
     }
+
+    //bookings with QR
+
+    public class BookingQRResponse : BookingResponse
+    {
+        public string QRCodeBase64 { get; set; }
+        public string ThankYouMessage { get; set; }
+        public BookingDetailsResponse BookingDetails { get; set; }
+    }
+
+    public class ConfirmBookingWithQRRequest
+    {
+        public int BookingId { get; set; }
+        public string UserEmail { get; set; }
+    }
+
+    public class QRCodeDataResponse
+    {
+        public int BookingId { get; set; }
+        public string BookingCode { get; set; }
+        public string EventName { get; set; }
+        public DateTime EventDate { get; set; }
+        public string EventTime { get; set; }
+        public string Location { get; set; }
+        public string CustomerName { get; set; }
+        public string CustomerEmail { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string Status { get; set; }
+        public DateTime BookingDate { get; set; }
+        public List<QRSeatDetail> Seats { get; set; } = new List<QRSeatDetail>();
+        public string Message { get; set; }
+    }
+
+    public class QRSeatDetail
+    {
+        public string SeatType { get; set; }
+        public int Quantity { get; set; }
+        public decimal Price { get; set; }
+        public decimal Subtotal { get; set; }
+    }
 }
