@@ -39,4 +39,29 @@ namespace MODEL.Request
     {
         public string QRCodeBase64 { get; set; }
     }
+
+    public class ScanTicketRequest
+    {
+        public string BookingCode { get; set; }
+        public int? SeatTypeId { get; set; } // Optional for partial scanning
+        public int QuantityToScan { get; set; } = 1;
+        public string ScannedBy { get; set; }
+        public string ScanType { get; set; } = "entry";
+        public string DeviceInfo { get; set; }
+        public bool ForceScan { get; set; } = false;
+    }
+
+    public class PartialScanRequest
+    {
+        public int BookingId { get; set; }
+        public List<SeatScanDetail> SeatScanDetails { get; set; }
+        public string ScannedBy { get; set; }
+        public string DeviceInfo { get; set; }
+    }
+
+    public class SeatScanDetail
+    {
+        public int SeatTypeId { get; set; }
+        public int QuantityToScan { get; set; }
+    }
 }

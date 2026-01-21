@@ -14,6 +14,7 @@ namespace BAL.Services
     {
         Task<bool> SendEmailAsync(string toEmail, string subject, string body);
         Task<bool> SendOTPEmailAsync(string toEmail, string otp, string userName = "");
+        Task<bool> TestSmtpConnectionAsync();
     }
     public class EmailService: IEmailService
     {
@@ -30,6 +31,17 @@ namespace BAL.Services
         {
             try
             {
+                // Log all configuration details
+                _logger.LogInformation("=== EMAIL SERVICE CONFIGURATION ===");
+                _logger.LogInformation($"SMTP Server: {_configuration.SmtpServer}:{_configuration.SmtpPort}");
+                _logger.LogInformation($"Username: {_configuration.SmtpUsername}");
+                _logger.LogInformation($"From Email: {_configuration.FromEmail}");
+                _logger.LogInformation($"Enable SSL: {_configuration.EnableSsl}");
+                _logger.LogInformation($"Password Length: {_configuration.SmtpPassword?.Length ?? 0}");
+                _logger.LogInformation($"To: {toEmail}");
+                _logger.LogInformation($"Subject: {subject}");
+                _logger.LogInformation("=================================");
+
                 using (var client = new SmtpClient(_configuration.SmtpServer, _configuration.SmtpPort))
                 {
                     _logger.LogInformation($"Attempting to send email to: {toEmail}");
@@ -39,6 +51,7 @@ namespace BAL.Services
 
                     client.EnableSsl = _configuration.EnableSsl;
                     client.Credentials = new NetworkCredential(_configuration.SmtpUsername, _configuration.SmtpPassword);
+                    client.Timeout = 30000; // 30 seconds
 
                     var mailMessage = new MailMessage
                     {
@@ -53,6 +66,19 @@ namespace BAL.Services
                     _logger.LogInformation($"Email sent successfully to {toEmail}");
                     return true;
                 }
+            }
+            catch (SmtpException smtpEx)
+            {
+                _logger.LogError(smtpEx, $"✗ SMTP Error sending to {toEmail}");
+                _logger.LogError($"Status Code: {smtpEx.StatusCode}");
+                _logger.LogError($"Message: {smtpEx.Message}");
+
+                if (smtpEx.InnerException != null)
+                {
+                    _logger.LogError($"Inner Exception: {smtpEx.InnerException.Message}");
+                }
+
+                return false;
             }
             catch (Exception ex)
             {
@@ -95,6 +121,36 @@ namespace BAL.Services
                 </html>";
 
             return await SendEmailAsync(toEmail, subject, body);
+        }
+
+        // Add to your EmailService.cs
+        public async Task<bool> TestSmtpConnectionAsync()
+        {
+            try
+            {
+                using (var client = new SmtpClient(_configuration.SmtpServer, _configuration.SmtpPort))
+                {
+                    client.EnableSsl = _configuration.EnableSsl;
+                    client.Credentials = new NetworkCredential(_configuration.SmtpUsername, _configuration.SmtpPassword);
+                    client.Timeout = 15000; // 15 seconds for test
+
+                    await client.SendMailAsync(
+                        new MailMessage(_configuration.FromEmail, _configuration.FromEmail)
+                        {
+                            Subject = "SMTP Test",
+                            Body = "Test connection",
+                            IsBodyHtml = false
+                        }
+                    );
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SMTP Connection Test Failed");
+                return false;
+            }
         }
     }
 }

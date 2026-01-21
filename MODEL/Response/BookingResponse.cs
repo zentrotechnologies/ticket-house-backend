@@ -56,14 +56,37 @@ namespace MODEL.Response
         public List<BookingSeatResponse> BookingSeats { get; set; } = new List<BookingSeatResponse>();
     }
 
+    //public class BookingSeatResponse
+    //{
+    //    public int booking_seat_id { get; set; }
+    //    public int event_seat_type_inventory_id { get; set; }
+    //    public string seat_name { get; set; }
+    //    public int quantity { get; set; }
+    //    public decimal price_per_seat { get; set; }
+    //    public decimal subtotal { get; set; }
+    //}
+
     public class BookingSeatResponse
     {
         public int booking_seat_id { get; set; }
+        public int booking_id { get; set; }
         public int event_seat_type_inventory_id { get; set; }
         public string seat_name { get; set; }
         public int quantity { get; set; }
         public decimal price_per_seat { get; set; }
         public decimal subtotal { get; set; }
+
+        // Scanning properties
+        public int scanned_quantity { get; set; }
+        public int remaining_quantity { get; set; }
+        public DateTime? last_scan_time { get; set; }
+        public string scanned_by { get; set; }
+
+        public DateTime created_on { get; set; }
+        public string created_by { get; set; }
+        public DateTime? updated_on { get; set; }
+        public string updated_by { get; set; }
+        public int active { get; set; }
     }
 
     public class MyBookingsResponse
@@ -126,5 +149,64 @@ namespace MODEL.Response
         public int Quantity { get; set; }
         public decimal Price { get; set; }
         public decimal Subtotal { get; set; }
+    }
+
+    public class TicketScanResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string Message { get; set; }
+        public string Status { get; set; } // success/partial/error
+        public int BookingId { get; set; }
+        public string BookingCode { get; set; }
+        public string EventName { get; set; }
+        public string CustomerName { get; set; }
+        public DateTime ScanTime { get; set; }
+        public List<SeatScanResult> ScanResults { get; set; } = new List<SeatScanResult>();
+        public ScanSummary Summary { get; set; }
+    }
+
+    public class SeatScanResult
+    {
+        public int SeatTypeId { get; set; }
+        public string SeatName { get; set; }
+        public int RequestedQuantity { get; set; }
+        public int ScannedQuantity { get; set; }
+        public int RemainingQuantity { get; set; }
+        public bool IsFullyScanned { get; set; }
+        public string Status { get; set; }
+    }
+
+    public class ScanSummary
+    {
+        public int TotalTickets { get; set; }
+        public int ScannedTickets { get; set; }
+        public int RemainingTickets { get; set; }
+        public bool IsFullyScanned { get; set; }
+        public decimal PercentageScanned { get; set; }
+    }
+
+    public class BookingScanSummaryResponse
+    {
+        public int BookingId { get; set; }
+        public string BookingCode { get; set; }
+        public string EventName { get; set; }
+        public DateTime EventDate { get; set; }
+        public string CustomerName { get; set; }
+        public List<SeatScanInfo> SeatScanInfo { get; set; } = new List<SeatScanInfo>();
+        public ScanSummary Summary { get; set; }
+        public DateTime? FirstScanTime { get; set; }
+        public DateTime? LastScanTime { get; set; }
+    }
+
+    public class SeatScanInfo
+    {
+        public int SeatTypeId { get; set; }
+        public string SeatName { get; set; }
+        public int TotalQuantity { get; set; }
+        public int ScannedQuantity { get; set; }
+        public int RemainingQuantity { get; set; }
+        public bool IsFullyScanned { get; set; }
+        public DateTime? LastScanTime { get; set; }
+        public string LastScannedBy { get; set; }
     }
 }

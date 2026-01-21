@@ -15,13 +15,16 @@ namespace TicketHouseBackend.Controllers
     {
         private readonly IBookingService _bookingService;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IEmailService _emailService;
 
         public BookingController(
             IBookingService bookingService,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IEmailService emailService)
         {
             _bookingService = bookingService;
             _httpContextAccessor = httpContextAccessor;
+            _emailService = emailService;
         }
 
         [HttpGet("GetAvailableSeats/{eventId}")]
@@ -453,5 +456,318 @@ namespace TicketHouseBackend.Controllers
                 };
             }
         }
+
+        [HttpGet("test-smtp")]
+        [AllowAnonymous]
+        public async Task<IActionResult> TestSmtp()
+        {
+            var result = await _emailService.TestSmtpConnectionAsync();
+            return Ok(new { success = result, message = result ? "SMTP working" : "SMTP failed" });
+        }
+
+        [HttpGet("test-smtp-connection-only")]
+        [AllowAnonymous]
+        public async Task<IActionResult> TestSmtpConnectionOnly()
+        {
+            try
+            {
+                // Just test connection without authentication
+                using var client = new System.Net.Mail.SmtpClient("smtp.gmail.com", 587);
+                client.EnableSsl = true;
+                client.Timeout = 5000;
+
+                // This will fail at authentication but will tell us if we can reach the server
+                await client.SendMailAsync(
+                    new System.Net.Mail.MailMessage("pranjal.kalokhe@zentrotechnologies.com", "pranjal.kalokhe@zentrotechnologies.com")
+                    {
+                        Subject = "Test",
+                        Body = "Test"
+                    }
+                );
+
+                return Ok(new { success = false, message = "Unexpected - authentication should have failed" });
+            }
+            catch (System.Net.Mail.SmtpException ex) when (ex.Message.Contains("Authentication"))
+            {
+                // This is GOOD - means we connected to server but auth failed
+                return Ok(new
+                {
+                    success = true,
+                    message = "SMTP server is reachable, authentication failed (expected)"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    message = $"Connection test failed: {ex.Message}"
+                });
+            }
+        }
+
+        [HttpGet("test-email-service")]
+        [AllowAnonymous]
+        public async Task<IActionResult> TestEmailService()
+        {
+            try
+            {
+                // Test 1: Using your EmailService
+                var emailSent = await _emailService.SendEmailAsync(
+                    "bingwatchallthetime@gmail.com",
+                    "Test from EmailService",
+                    $"Test email at {DateTime.UtcNow}. If you receive this, EmailService is working."
+                );
+
+                if (emailSent)
+                {
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Email sent successfully via EmailService",
+                        service = "Your EmailService"
+                    });
+                }
+
+                // Test 2: Direct SMTP with same settings
+                var config = new
+                {
+                    Server = "tickethouse.in",
+                    Port = 587,
+                    Username = "no-reply@tickethouse.in",
+                    Password = "Tickethouse@zentro7888",
+                    FromEmail = "no-reply@tickethouse.in",
+                    FromName = "TicketHouse"
+                };
+
+                try
+                {
+                    using var client = new System.Net.Mail.SmtpClient(config.Server, config.Port);
+                    client.EnableSsl = true;
+                    client.Credentials = new System.Net.NetworkCredential(config.Username, config.Password);
+                    client.Timeout = 15000;
+
+                    await client.SendMailAsync(
+                        new System.Net.Mail.MailMessage(config.FromEmail, "bingwatchallthetime@gmail.com")
+                        {
+                            Subject = "Direct SMTP Test",
+                            Body = $"Direct test at {DateTime.UtcNow}",
+                            IsBodyHtml = false
+                        }
+                    );
+
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Email sent successfully via direct SMTP",
+                        service = "Direct SMTP Client",
+                        note = "Your EmailService might have different configuration"
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Both EmailService and direct SMTP failed",
+                        emailServiceResult = emailSent,
+                        directSmtpError = ex.Message,
+                        suggestion = "Check if THConfiguration is being loaded correctly in EmailService"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Test failed with exception",
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
+
+        [HttpGet("GetBookingForScan/{bookingCode}")]
+        public async Task<CommonResponseModel<BookingDetailsResponse>> GetBookingForScan(string bookingCode)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(bookingCode))
+                {
+                    return new CommonResponseModel<BookingDetailsResponse>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Booking code is required"
+                    };
+                }
+
+                return await _bookingService.GetBookingForScanningAsync(bookingCode);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<BookingDetailsResponse>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                };
+            }
+        }
+
+        [HttpPost("ScanTicket")]
+        public async Task<CommonResponseModel<TicketScanResponse>> ScanTicket([FromBody] ScanTicketRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(request?.BookingCode))
+                {
+                    return new CommonResponseModel<TicketScanResponse>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Booking code is required"
+                    };
+                }
+
+                var adminEmail = GetCurrentUserEmail();
+                if (string.IsNullOrEmpty(adminEmail))
+                {
+                    return new CommonResponseModel<TicketScanResponse>
+                    {
+                        ErrorCode = "401",
+                        Status = "Error",
+                        Message = "Admin authentication required"
+                    };
+                }
+
+                return await _bookingService.ScanTicketAsync(request, adminEmail);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<TicketScanResponse>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                };
+            }
+        }
+
+        [HttpPost("PartialScan")]
+        public async Task<CommonResponseModel<TicketScanResponse>> PartialScan([FromBody] PartialScanRequest request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return new CommonResponseModel<TicketScanResponse>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Request data is required"
+                    };
+                }
+
+                var adminEmail = GetCurrentUserEmail();
+                if (string.IsNullOrEmpty(adminEmail))
+                {
+                    return new CommonResponseModel<TicketScanResponse>
+                    {
+                        ErrorCode = "401",
+                        Status = "Error",
+                        Message = "Admin authentication required"
+                    };
+                }
+
+                return await _bookingService.PartialScanTicketAsync(request, adminEmail);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<TicketScanResponse>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                };
+            }
+        }
+
+        [HttpGet("GetScanSummary/{bookingId}")]
+        public async Task<CommonResponseModel<BookingScanSummaryResponse>> GetScanSummary(int bookingId)
+        {
+            try
+            {
+                if (bookingId <= 0)
+                {
+                    return new CommonResponseModel<BookingScanSummaryResponse>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Valid booking ID is required"
+                    };
+                }
+
+                return await _bookingService.GetBookingScanSummaryAsync(bookingId);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<BookingScanSummaryResponse>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                };
+            }
+        }
+
+        [HttpPost("ResetScan/{bookingId}")]
+        public async Task<CommonResponseModel<bool>> ResetScan(int bookingId)
+        {
+            try
+            {
+                if (bookingId <= 0)
+                {
+                    return new CommonResponseModel<bool>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Valid booking ID is required",
+                        Data = false
+                    };
+                }
+
+                var adminEmail = GetCurrentUserEmail();
+                if (string.IsNullOrEmpty(adminEmail))
+                {
+                    return new CommonResponseModel<bool>
+                    {
+                        ErrorCode = "401",
+                        Status = "Error",
+                        Message = "Admin authentication required",
+                        Data = false
+                    };
+                }
+
+                return await _bookingService.ResetScanCountAsync(bookingId, adminEmail);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<bool>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message,
+                    Data = false
+                };
+            }
+        }
+
+        //private string GetCurrentUserEmail()
+        //{
+        //    return _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value ??
+        //           _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value;
+        //}
     }
 }

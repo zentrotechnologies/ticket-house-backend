@@ -31,6 +31,14 @@ namespace BAL.Services
         Task<CommonResponseModel<List<MyBookingsResponse>>> GetMyBookingsByUserIdAsync(Guid userId);
         Task<CommonResponseModel<BookingQRResponse>> ConfirmBookingWithQRAsync(int bookingId, string userEmail);
         Task<CommonResponseModel<QRCodeDataResponse>> DecodeQRCodeDataAsync(string qrCodeBase64);
+
+        // Ticket Scanning
+        Task<CommonResponseModel<TicketScanResponse>> ScanTicketAsync(ScanTicketRequest request, string adminEmail);
+        Task<CommonResponseModel<TicketScanResponse>> PartialScanTicketAsync(PartialScanRequest request, string adminEmail);
+        Task<CommonResponseModel<BookingScanSummaryResponse>> GetBookingScanSummaryAsync(int bookingId);
+        Task<CommonResponseModel<BookingDetailsResponse>> GetBookingForScanningAsync(string bookingCode);
+        Task<CommonResponseModel<List<TicketScanHistoryModel>>> GetScanHistoryAsync(int bookingId);
+        Task<CommonResponseModel<bool>> ResetScanCountAsync(int bookingId, string adminEmail);
     }
     public class BookingService: IBookingService
     {
@@ -285,6 +293,7 @@ namespace BAL.Services
                             booking_id = bookingId,
                             event_seat_type_inventory_id = seatSelection.SeatTypeId,
                             quantity = seatSelection.Quantity,
+                            remaining_quantity = seatSelection.Quantity,  // Add this line
                             price_per_seat = seatType.price,
                             subtotal = subtotal,
                             //created_by = userEmail,
@@ -1195,6 +1204,318 @@ namespace BAL.Services
             {
                 return null;
             }
+        }
+
+        public async Task<CommonResponseModel<TicketScanResponse>> ScanTicketAsync(ScanTicketRequest request, string adminEmail)
+        {
+            var response = new CommonResponseModel<TicketScanResponse>();
+
+            try
+            {
+                if (string.IsNullOrEmpty(request.BookingCode))
+                {
+                    response.Status = "Failure";
+                    response.Message = "Booking code is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                // Set scanned by info
+                //request.ScannedBy = adminEmail;
+                //request.DeviceInfo = $"Web Admin - {DateTime.UtcNow}";
+
+                // Get user by email to get user_id
+                var user = await _authRepository.GetUserByEmail(adminEmail);
+                if (user == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "User not found";
+                    response.ErrorCode = "404";
+                    return response;
+                }
+
+                // Set scanned by info with user_id instead of email
+                request.ScannedBy = user.user_id.ToString(); // Convert GUID to string
+                request.DeviceInfo = $"Web Admin - {DateTime.UtcNow}";
+
+                var scanResult = await _bookingRepository.ScanTicketAsync(request);
+
+                response.Status = scanResult.IsSuccess ? "Success" : "Partial";
+                response.Message = scanResult.Message;
+                response.ErrorCode = "0";
+                response.Data = scanResult;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error scanning ticket: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<TicketScanResponse>> PartialScanTicketAsync(PartialScanRequest request, string adminEmail)
+        {
+            var response = new CommonResponseModel<TicketScanResponse>();
+
+            try
+            {
+                if (request.BookingId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid booking ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                if (request.SeatScanDetails == null || !request.SeatScanDetails.Any())
+                {
+                    response.Status = "Failure";
+                    response.Message = "Seat scan details are required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                // Validate quantities
+                foreach (var detail in request.SeatScanDetails)
+                {
+                    if (detail.QuantityToScan <= 0)
+                    {
+                        response.Status = "Failure";
+                        response.Message = "Quantity to scan must be greater than 0";
+                        response.ErrorCode = "400";
+                        return response;
+                    }
+                }
+
+                //request.ScannedBy = adminEmail;
+                //request.DeviceInfo = $"Web Admin - {DateTime.UtcNow}";
+
+                // Get user by email to get user_id
+                var user = await _authRepository.GetUserByEmail(adminEmail);
+                if (user == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "User not found";
+                    response.ErrorCode = "404";
+                    return response;
+                }
+
+                // Set scanned by with user_id instead of email
+                request.ScannedBy = user.user_id.ToString(); // Convert GUID to string
+                request.DeviceInfo = $"Web Scanner - {DateTime.UtcNow}";
+
+                var scanResult = await _bookingRepository.PartialScanTicketAsync(request);
+
+                response.Status = scanResult.IsSuccess ? "Success" : "Partial";
+                response.Message = scanResult.Message;
+                response.ErrorCode = "0";
+                response.Data = scanResult;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error in partial scan: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<BookingScanSummaryResponse>> GetBookingScanSummaryAsync(int bookingId)
+        {
+            var response = new CommonResponseModel<BookingScanSummaryResponse>();
+
+            try
+            {
+                if (bookingId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid booking ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                var summary = await _bookingRepository.GetBookingScanSummaryAsync(bookingId);
+
+                if (summary != null)
+                {
+                    response.Status = "Success";
+                    response.Message = "Scan summary fetched successfully";
+                    response.ErrorCode = "0";
+                    response.Data = summary;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "Booking not found";
+                    response.ErrorCode = "404";
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error fetching scan summary: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<BookingDetailsResponse>> GetBookingForScanningAsync(string bookingCode)
+        {
+            var response = new CommonResponseModel<BookingDetailsResponse>();
+
+            try
+            {
+                if (string.IsNullOrEmpty(bookingCode))
+                {
+                    response.Status = "Failure";
+                    response.Message = "Booking code is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                var bookingDetails = await _bookingRepository.GetBookingForScanningAsync(bookingCode);
+
+                if (bookingDetails != null)
+                {
+                    response.Status = "Success";
+                    response.Message = "Booking details fetched for scanning";
+                    response.ErrorCode = "0";
+                    response.Data = bookingDetails;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "Booking not found or not confirmed";
+                    response.ErrorCode = "404";
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error fetching booking for scanning: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<List<TicketScanHistoryModel>>> GetScanHistoryAsync(int bookingId)
+        {
+            var response = new CommonResponseModel<List<TicketScanHistoryModel>>();
+
+            try
+            {
+                if (bookingId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid booking ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                var scanHistory = await _bookingRepository.GetScanHistoryAsync(bookingId);
+
+                response.Status = "Success";
+                response.Message = "Scan history fetched successfully";
+                response.ErrorCode = "0";
+                response.Data = scanHistory.ToList();
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error fetching scan history: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<bool>> ValidateTicketForScanAsync(string bookingCode, int seatTypeId, int quantityToScan)
+        {
+            var response = new CommonResponseModel<bool>();
+
+            try
+            {
+                if (string.IsNullOrEmpty(bookingCode))
+                {
+                    response.Status = "Failure";
+                    response.Message = "Booking code is required";
+                    response.ErrorCode = "400";
+                    response.Data = false;
+                    return response;
+                }
+
+                if (seatTypeId <= 0 || quantityToScan <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid seat type ID and quantity are required";
+                    response.ErrorCode = "400";
+                    response.Data = false;
+                    return response;
+                }
+
+                var isValid = await _bookingRepository.ValidateTicketForScanAsync(bookingCode, seatTypeId, quantityToScan);
+
+                response.Status = "Success";
+                response.Message = isValid ? "Ticket is valid for scanning" : "Ticket is not valid for scanning";
+                response.ErrorCode = "0";
+                response.Data = isValid;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error validating ticket: {ex.Message}";
+                response.ErrorCode = "1";
+                response.Data = false;
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<bool>> ResetScanCountAsync(int bookingId, string adminEmail)
+        {
+            var response = new CommonResponseModel<bool>();
+
+            try
+            {
+                if (bookingId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid booking ID is required";
+                    response.ErrorCode = "400";
+                    response.Data = false;
+                    return response;
+                }
+
+                if (string.IsNullOrEmpty(adminEmail))
+                {
+                    response.Status = "Failure";
+                    response.Message = "Admin email is required";
+                    response.ErrorCode = "400";
+                    response.Data = false;
+                    return response;
+                }
+
+                var affectedRows = await _bookingRepository.ResetScanCountAsync(bookingId, adminEmail);
+
+                response.Status = affectedRows > 0 ? "Success" : "Failure";
+                response.Message = affectedRows > 0 ? "Scan count reset successfully" : "Failed to reset scan count";
+                response.ErrorCode = "0";
+                response.Data = affectedRows > 0;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error resetting scan count: {ex.Message}";
+                response.ErrorCode = "1";
+                response.Data = false;
+            }
+
+            return response;
         }
     }
 }
