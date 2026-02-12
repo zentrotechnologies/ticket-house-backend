@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
     <PackageReference Include="Microsoft.Extensions.Features" Version="8.0.22" />
     <PackageReference Include="QRCoder" Version="1.7.0" />
+    <PackageReference Include="Razorpay" Version="3.3.2" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
   </ItemGroup>
 

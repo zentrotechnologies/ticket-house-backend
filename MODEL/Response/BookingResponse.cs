@@ -30,6 +30,9 @@ namespace MODEL.Response
         public int EventId { get; set; }
         public string EventName { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal ConvenienceFee { get; set; }
+        public decimal GstAmount { get; set; }
+        public decimal FinalAmount { get; set; } // For Razorpay
         public string Status { get; set; }
         public DateTime CreatedOn { get; set; }
     }
@@ -208,5 +211,73 @@ namespace MODEL.Response
         public bool IsFullyScanned { get; set; }
         public DateTime? LastScanTime { get; set; }
         public string LastScannedBy { get; set; }
+    }
+
+    //public class PaymentOrderResponse
+    //{
+    //    public string OrderId { get; set; } = string.Empty;
+    //    public string KeyId { get; set; } = string.Empty;
+    //    public decimal Amount { get; set; }
+    //    public string Currency { get; set; } = "INR";
+    //    public string CompanyName { get; set; } = string.Empty;
+    //    public string CustomerName { get; set; } = string.Empty;
+    //    public string CustomerEmail { get; set; } = string.Empty;
+    //    public Dictionary<string, string> Notes { get; set; } = new Dictionary<string, string>();
+    //}
+
+    public class PaymentOrderResponse
+    {
+        public string OrderId { get; set; } = string.Empty;
+        public string KeyId { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public string Currency { get; set; } = "INR";
+        public string CompanyName { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerEmail { get; set; } = string.Empty;
+        public Dictionary<string, string> Notes { get; set; } = new Dictionary<string, string>();
+
+        // Add booking info
+        public int BookingId { get; set; }
+        public string BookingCode { get; set; }
+        public decimal BaseAmount { get; set; }
+        public decimal ConvenienceFee { get; set; }
+        public decimal GstAmount { get; set; }
+        public decimal FinalAmount { get; set; }
+    }
+
+    public class PaymentVerificationResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string PaymentId { get; set; } = string.Empty;
+        public string OrderId { get; set; } = string.Empty;
+        public string PaymentMethod { get; set; } = string.Empty;
+        public string CardLast4 { get; set; } = string.Empty;
+        public string CardNetwork { get; set; } = string.Empty;
+        public string BankName { get; set; } = string.Empty;
+        public string Wallet { get; set; } = string.Empty;
+        public string VPA { get; set; } = string.Empty;
+        public string PaymentStatus { get; set; } = string.Empty;
+        public DateTime PaymentDate { get; set; }
+        public Dictionary<string, string>? PaymentDetails { get; set; }
+    }
+
+    public class PaymentStatusResponse
+    {
+        public string PaymentId { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public string Currency { get; set; } = "INR";
+        public string Method { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public Dictionary<string, string>? Notes { get; set; }
+    }
+
+    public class RefundResponse
+    {
+        public string RefundId { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
     }
 }

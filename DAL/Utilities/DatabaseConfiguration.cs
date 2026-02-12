@@ -23,5 +23,7 @@ namespace DAL.Utilities
         public static string event_seat_type_inventory = DB_SCHEMA + "event_seat_type_inventory";
         public static string booking = "booking";
         public static string booking_seat = "booking_seat";
+        public static string payment_history = DB_SCHEMA + "payment_history";
+        public static string ticket_scan_history = DB_SCHEMA + "ticket_scan_history";
     }
 }

@@ -145,15 +145,43 @@ namespace DAL.Repository
             });
         }
 
+        //public async Task<int> CreateBookingAsync(BookingModel booking)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+        //    var query = $@"
+        //        INSERT INTO {this.booking} 
+        //        (booking_code, user_id, event_id, total_amount, status, created_by, updated_by)
+        //        VALUES 
+        //        (@booking_code, @user_id, @event_id, @total_amount, @status, @created_by, @updated_by)
+        //        RETURNING booking_id";
+
+        //    var bookingId = await connection.ExecuteScalarAsync<int>(query, new
+        //    {
+        //        booking_code = booking.booking_code,
+        //        user_id = booking.user_id,
+        //        event_id = booking.event_id,
+        //        total_amount = booking.total_amount,
+        //        status = booking.status,
+        //        created_by = booking.created_by,
+        //        updated_by = booking.updated_by
+        //    });
+
+        //    return bookingId;
+        //}
+
         public async Task<int> CreateBookingAsync(BookingModel booking)
         {
             using var connection = _dbConnection.GetConnection();
             var query = $@"
-                INSERT INTO {this.booking} 
-                (booking_code, user_id, event_id, total_amount, status, created_by, updated_by)
-                VALUES 
-                (@booking_code, @user_id, @event_id, @total_amount, @status, @created_by, @updated_by)
-                RETURNING booking_id";
+            INSERT INTO {this.booking} 
+            (booking_code, user_id, event_id, total_amount, booking_amount, 
+             convenience_fee, gst_amount, final_amount, status, 
+             created_by, updated_by, currency)
+            VALUES 
+            (@booking_code, @user_id, @event_id, @total_amount, @booking_amount,
+             @convenience_fee, @gst_amount, @final_amount, @status, 
+             @created_by, @updated_by, @currency)
+            RETURNING booking_id";
 
             var bookingId = await connection.ExecuteScalarAsync<int>(query, new
             {
@@ -161,9 +189,14 @@ namespace DAL.Repository
                 user_id = booking.user_id,
                 event_id = booking.event_id,
                 total_amount = booking.total_amount,
+                booking_amount = booking.booking_amount,
+                convenience_fee = booking.convenience_fee,
+                gst_amount = booking.gst_amount,
+                final_amount = booking.final_amount,
                 status = booking.status,
                 created_by = booking.created_by,
-                updated_by = booking.updated_by
+                updated_by = booking.updated_by,
+                currency = booking.currency
             });
 
             return bookingId;

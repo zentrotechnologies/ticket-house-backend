@@ -1,4 +1,5 @@
 ﻿using DAL.Repository;
+using DAL.Utilities;
 using MODEL.Entities;
 using MODEL.Request;
 using MODEL.Response;
@@ -261,6 +262,9 @@ namespace BAL.Services
                     totalAmount += subtotal;
                 }
 
+                // Calculate fees using helper
+                var fees = FeeCalculator.CalculateFees(totalAmount);
+
                 // Generate booking code
                 var bookingCode = $"ZTH{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
 
@@ -270,7 +274,11 @@ namespace BAL.Services
                     booking_code = bookingCode,
                     user_id = user.user_id,
                     event_id = request.EventId,
-                    total_amount = totalAmount,
+                    total_amount = totalAmount, //base amount
+                    booking_amount = totalAmount, // Same as total_amount (for clarity)
+                    convenience_fee = fees.convenienceFee,
+                    gst_amount = fees.gstAmount,
+                    final_amount = fees.finalAmount, // This is what Razorpay will use
                     status = "pending", // Will be confirmed after payment
                     //created_by = userEmail,
                     //updated_by = userEmail
@@ -319,7 +327,9 @@ namespace BAL.Services
                         BookingCode = bookingCode,
                         EventId = request.EventId,
                         EventName = eventDetails.event_name,
-                        TotalAmount = totalAmount,
+                        //TotalAmount = totalAmount,
+                        TotalAmount = totalAmount, // Base amount
+                        FinalAmount = fees.finalAmount, // Add this to response model
                         Status = "pending",
                         CreatedOn = DateTime.UtcNow
                     };

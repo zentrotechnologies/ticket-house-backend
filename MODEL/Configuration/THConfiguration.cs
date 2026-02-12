@@ -26,6 +26,9 @@ namespace MODEL.Configuration
         public bool EnableSsl { get; set; } = true;
         public string? FromEmail { get; set; }
         public string? FromName { get; set; }
+
+        // Razorpay Configuration
+        public RazorpayConfig? Razorpay { get; set; }
     }
     public class JwtConfiguration
     {
@@ -33,5 +36,14 @@ namespace MODEL.Configuration
         public string? Issuer { get; set; }
         public string? Audience { get; set; }
         public int ExpireMinutes { get; set; } = 30;
+    }
+
+    // Add Razorpay configuration class
+    public class RazorpayConfig
+    {
+        public string KeyId { get; set; } = string.Empty;
+        public string KeySecret { get; set; } = string.Empty;
+        public string Currency { get; set; } = "INR";
+        public string CompanyName { get; set; } = "TicketHouse";
     }
 }
