@@ -769,5 +769,45 @@ namespace TicketHouseBackend.Controllers
         //    return _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value ??
         //           _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value;
         //}
+        [AllowAnonymous]
+        [HttpGet("GetBookingDetailsById/{bookingId}")]
+        [Authorize]
+        public async Task<CommonResponseModel<BookingDetailedResponse>> GetBookingDetailsById(int bookingId)
+        {
+            try
+            {
+                if (bookingId <= 0)
+                {
+                    return new CommonResponseModel<BookingDetailedResponse>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Valid booking ID is required. Received: " + bookingId
+                    };
+                }
+
+                // Optional: Check if the user has permission to view this booking
+                var currentUserIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value;
+                var currentUserRole = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
+
+                // For non-admin users, you might want to verify they own this booking
+                if (currentUserRole != "Admin" && currentUserRole != "Organizer")
+                {
+                    // You could add additional check here to verify the booking belongs to the user
+                    // This would require fetching the booking first or passing userId to the service
+                }
+
+                return await _bookingService.GetBookingDetailsByIdAsync(bookingId);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<BookingDetailedResponse>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = $"An error occurred: {ex.Message}"
+                };
+            }
+        }
     }
 }

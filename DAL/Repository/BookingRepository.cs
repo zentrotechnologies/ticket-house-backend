@@ -48,6 +48,7 @@ namespace DAL.Repository
 
         // Admin methods
         Task<BookingScanSummaryResponse> GetBookingScanSummaryAsync(int bookingId);
+        Task<BookingDetailedResponse> GetBookingDetailsByIdAsync(int bookingId);
     }
     public class BookingRepository: IBookingRepository
     {
@@ -1305,6 +1306,184 @@ namespace DAL.Repository
                 transaction.Rollback();
                 throw;
             }
+        }
+
+        public async Task<BookingDetailedResponse> GetBookingDetailsByIdAsync(int bookingId)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            // 1. Fetch main booking details with event and user information
+            var mainQuery = $@"
+            SELECT 
+                -- Booking fields
+                b.booking_id,
+                b.booking_code,
+                b.status,
+                b.created_on,
+                b.updated_on,
+                b.total_amount,
+                b.booking_amount,
+                b.convenience_fee,
+                b.gst_amount,
+                b.final_amount,
+                b.currency,
+                b.payment_status,
+                b.payment_method,
+                b.payment_date,
+                b.razorpay_order_id,
+                b.razorpay_payment_id,
+            
+                -- Event fields (as event_info)
+                e.event_id,
+                e.event_name,
+                e.event_date,
+                e.start_time,
+                e.end_time,
+                e.location,
+                e.full_address,
+                e.banner_image,
+                e.status as event_status,
+            
+                -- User fields (as user_info)
+                u.user_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                u.country_code,
+                u.mobile
+            
+            FROM {booking} b
+            INNER JOIN {events} e ON b.event_id = e.event_id AND e.active = 1
+            INNER JOIN {Users} u ON b.user_id = u.user_id AND u.active = 1
+            WHERE b.booking_id = @BookingId AND b.active = 1";
+
+            var bookingDictionary = new Dictionary<int, BookingDetailedResponse>();
+
+            var bookingResult = await connection.QueryAsync<BookingDetailedResponse, EventInfo, UserInfo, BookingDetailedResponse>(
+                mainQuery,
+                (booking, eventInfo, userInfo) =>
+                {
+                    if (!bookingDictionary.TryGetValue(booking.booking_id, out var bookingEntry))
+                    {
+                        bookingEntry = booking;
+                        bookingEntry.event_info = eventInfo;
+                        bookingEntry.user_info = userInfo;
+                        bookingEntry.booking_seats = new List<BookingSeatDetailedInfo>();
+                        bookingEntry.scan_history = new List<TicketScanHistoryInfo>();
+                        bookingDictionary.Add(booking.booking_id, bookingEntry);
+                    }
+                    return bookingEntry;
+                },
+                new { BookingId = bookingId },
+                splitOn: "event_id,user_id"
+            );
+
+            var bookingDetails = bookingDictionary.Values.FirstOrDefault();
+
+            if (bookingDetails == null)
+                return null;
+
+            // 2. Fetch booking seats with seat names and scan information
+            var seatsQuery = $@"
+            SELECT 
+                bs.booking_seat_id,
+                bs.event_seat_type_inventory_id,
+                bs.quantity,
+                bs.scanned_quantity,
+                bs.remaining_quantity,
+                bs.price_per_seat,
+                bs.subtotal,
+                bs.last_scan_time,
+                bs.scanned_by,
+                esti.seat_name,
+            
+                -- Calculate derived fields
+                CASE 
+                    WHEN bs.quantity > 0 
+                    THEN ROUND((CAST(bs.scanned_quantity AS DECIMAL) / bs.quantity) * 100, 2)
+                    ELSE 0 
+                END as scan_percentage,
+            
+                CASE 
+                    WHEN bs.remaining_quantity = 0 OR bs.scanned_quantity >= bs.quantity 
+                    THEN true 
+                    ELSE false 
+                END as is_fully_scanned
+            
+            FROM {booking_seat} bs
+            INNER JOIN {event_seat_type_inventory} esti 
+                ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id 
+                AND esti.active = 1
+            WHERE bs.booking_id = @BookingId 
+                AND bs.active = 1
+            ORDER BY esti.seat_name";
+
+            var bookingSeats = await connection.QueryAsync<BookingSeatDetailedInfo>(seatsQuery, new { BookingId = bookingId });
+            bookingDetails.booking_seats = bookingSeats.ToList();
+
+            // 3. Calculate overall scan summary
+            var totalTickets = bookingSeats.Sum(s => s.quantity);
+            var totalScanned = bookingSeats.Sum(s => s.scanned_quantity);
+            var totalRemaining = bookingSeats.Sum(s => s.remaining_quantity);
+
+            // Get first and last scan times
+            var scanTimesQuery = $@"
+            SELECT 
+                MIN(last_scan_time) as FirstScanTime,
+                MAX(last_scan_time) as LastScanTime
+            FROM {booking_seat}
+            WHERE booking_id = @BookingId 
+                AND last_scan_time IS NOT NULL";
+
+            var scanTimes = await connection.QueryFirstOrDefaultAsync<(DateTime? FirstScan, DateTime? LastScan)>(
+                scanTimesQuery, new { BookingId = bookingId });
+
+            // Get total scan events count
+            var scanEventsQuery = @"
+            SELECT COUNT(*) 
+            FROM ticket_scan_history 
+            WHERE booking_id = @BookingId";
+
+            var totalScanEvents = await connection.ExecuteScalarAsync<int>(scanEventsQuery, new { BookingId = bookingId });
+
+            bookingDetails.scan_summary = new ScanSummaryInfo
+            {
+                total_tickets = totalTickets,
+                total_scanned = totalScanned,
+                total_remaining = totalRemaining,
+                overall_scan_percentage = totalTickets > 0
+                    ? Math.Round((decimal)totalScanned / totalTickets * 100, 2)
+                    : 0,
+                is_fully_scanned = totalRemaining == 0,
+                first_scan_time = scanTimes.FirstScan,
+                last_scan_time = scanTimes.LastScan,
+                total_scan_events = totalScanEvents
+            };
+
+            // 4. Fetch ticket scan history with user details
+            var historyQuery = @"
+            SELECT 
+                tsh.scan_id,
+                tsh.booking_seat_id,
+                tsh.scanned_quantity,
+                tsh.scan_time,
+                tsh.scan_type,
+                tsh.scan_status,
+                tsh.remarks,
+                tsh.device_info,
+                esti.seat_name,
+                CONCAT(u.first_name, ' ', u.last_name) as scanned_by_name
+            FROM ticket_scan_history tsh
+            INNER JOIN booking_seat bs ON tsh.booking_seat_id = bs.booking_seat_id
+            INNER JOIN event_seat_type_inventory esti ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id
+            LEFT JOIN users u ON tsh.scanned_by = u.user_id::text OR tsh.scanned_by = u.email
+            WHERE tsh.booking_id = @BookingId
+            ORDER BY tsh.scan_time DESC";
+
+            var scanHistory = await connection.QueryAsync<TicketScanHistoryInfo>(historyQuery, new { BookingId = bookingId });
+            bookingDetails.scan_history = scanHistory.ToList();
+
+            return bookingDetails;
         }
     }
 }

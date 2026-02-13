@@ -888,8 +888,7 @@ namespace TicketHouseBackend.Controllers.Masters
         }
 
         [HttpPost("DeleteEventWithArtistsAndGalleries/{eventId}")]
-        public async Task<CommonResponseModel<bool>> DeleteEventWithArtistsAndGalleries(
-            int eventId, [FromBody] string updatedBy = null)
+        public async Task<CommonResponseModel<bool>> DeleteEventWithArtistsAndGalleries(int eventId, [FromBody] DeleteEventRequest request)
         {
             try
             {
@@ -904,7 +903,7 @@ namespace TicketHouseBackend.Controllers.Masters
                     };
                 }
 
-                updatedBy ??= User?.Identity?.Name ?? "system";
+                string updatedBy = request?.updatedBy ?? User?.Identity?.Name ?? "system";
 
                 var result = await _eventArtistGalleryService.DeleteEventWithArtistsAndGalleriesAsync(eventId, updatedBy);
                 return result;
@@ -920,6 +919,39 @@ namespace TicketHouseBackend.Controllers.Masters
                 };
             }
         }
+
+        //public async Task<CommonResponseModel<bool>> DeleteEventWithArtistsAndGalleries(
+        //    int eventId, [FromBody] string updatedBy = null)
+        //{
+        //    try
+        //    {
+        //        if (eventId <= 0)
+        //        {
+        //            return new CommonResponseModel<bool>
+        //            {
+        //                ErrorCode = "400",
+        //                Status = "Error",
+        //                Message = "Valid event ID is required",
+        //                Data = false
+        //            };
+        //        }
+
+        //        updatedBy ??= User?.Identity?.Name ?? "system";
+
+        //        var result = await _eventArtistGalleryService.DeleteEventWithArtistsAndGalleriesAsync(eventId, updatedBy);
+        //        return result;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return new CommonResponseModel<bool>
+        //        {
+        //            ErrorCode = "1",
+        //            Status = "Error",
+        //            Message = ex.Message,
+        //            Data = false
+        //        };
+        //    }
+        //}
 
         // Add to EventDetailsController
         [HttpPost("AddEventSeatTypes")]

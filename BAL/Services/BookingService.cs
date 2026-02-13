@@ -40,6 +40,7 @@ namespace BAL.Services
         Task<CommonResponseModel<BookingDetailsResponse>> GetBookingForScanningAsync(string bookingCode);
         Task<CommonResponseModel<List<TicketScanHistoryModel>>> GetScanHistoryAsync(int bookingId);
         Task<CommonResponseModel<bool>> ResetScanCountAsync(int bookingId, string adminEmail);
+        Task<CommonResponseModel<BookingDetailedResponse>> GetBookingDetailsByIdAsync(int bookingId);
     }
     public class BookingService: IBookingService
     {
@@ -1523,6 +1524,49 @@ namespace BAL.Services
                 response.Message = $"Error resetting scan count: {ex.Message}";
                 response.ErrorCode = "1";
                 response.Data = false;
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<BookingDetailedResponse>> GetBookingDetailsByIdAsync(int bookingId)
+        {
+            var response = new CommonResponseModel<BookingDetailedResponse>();
+
+            try
+            {
+                if (bookingId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid booking ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                var bookingDetails = await _bookingRepository.GetBookingDetailsByIdAsync(bookingId);
+
+                if (bookingDetails != null)
+                {
+                    response.Status = "Success";
+                    response.Message = "Booking details fetched successfully";
+                    response.ErrorCode = "0";
+                    response.Data = bookingDetails;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "Booking not found";
+                    response.ErrorCode = "404";
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error fetching booking details: {ex.Message}";
+                response.ErrorCode = "1";
+
+                // Log the exception
+                // _logger.LogError(ex, "Error in GetBookingDetailsByIdAsync for BookingId: {BookingId}", bookingId);
             }
 
             return response;

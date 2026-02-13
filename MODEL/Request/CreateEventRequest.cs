@@ -117,4 +117,9 @@ namespace MODEL.Request
         public int total_seats { get; set; }
         public string created_by { get; set; }
     }
+
+    public class DeleteEventRequest
+    {
+        public string updatedBy { get; set; }
+    }
 }

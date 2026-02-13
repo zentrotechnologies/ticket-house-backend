@@ -877,8 +877,58 @@ namespace BAL.Services
             return response;
         }
 
-        public async Task<PagedResponse<List<EventCompleteResponseModel>>> GetPaginatedEventsByCreatedByAsync(
-            EventPaginationRequest request)
+        //public async Task<PagedResponse<List<EventCompleteResponseModel>>> GetPaginatedEventsByCreatedByAsync(
+        //    EventPaginationRequest request)
+        //{
+        //    var response = new PagedResponse<List<EventCompleteResponseModel>>();
+        //    try
+        //    {
+        //        if (string.IsNullOrEmpty(request.created_by))
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "Created by user is required";
+        //            response.ErrorCode = "400";
+        //            return response;
+        //        }
+
+        //        // This needs to be implemented in repository
+        //        // For now, get all events and filter manually
+        //        var allEvents = await _eventDetailsRepository.GetAllEventsAsync();
+        //        var filteredEvents = allEvents
+        //            .Where(e => e.created_by == request.created_by)
+        //            .ToList();
+
+        //        var result = new List<EventCompleteResponseModel>();
+
+        //        foreach (var eventDetail in filteredEvents)
+        //        {
+        //            var eventWithDetails = await GetEventWithArtistsAndGalleriesAsync(eventDetail.event_id);
+        //            if (eventWithDetails.Data != null)
+        //            {
+        //                result.Add(eventWithDetails.Data);
+        //            }
+        //        }
+
+        //        response.Status = "Success";
+        //        response.Message = "Events fetched successfully";
+        //        response.ErrorCode = "0";
+        //        response.Data = result;
+        //        response.TotalCount = result.Count;
+        //        response.TotalPages = 1;
+        //        response.CurrentPage = request.PageNumber;
+        //        response.PageSize = request.PageSize;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        response.Status = "Failure";
+        //        response.Message = $"Error retrieving events: {ex.Message}";
+        //        response.ErrorCode = "1";
+        //    }
+
+        //    return response;
+        //}
+
+        public async Task<PagedResponse<List<EventCompleteResponseModel>>> GetPaginatedEventsByCreatedByAsync(EventPaginationRequest request)
         {
             var response = new PagedResponse<List<EventCompleteResponseModel>>();
             try
@@ -891,16 +941,28 @@ namespace BAL.Services
                     return response;
                 }
 
-                // This needs to be implemented in repository
-                // For now, get all events and filter manually
+                // Get ALL events (as you're currently doing)
                 var allEvents = await _eventDetailsRepository.GetAllEventsAsync();
                 var filteredEvents = allEvents
                     .Where(e => e.created_by == request.created_by)
+                    .OrderByDescending(e => e.event_id) // Add ordering for consistent pagination
+                    .ToList();
+
+                // Get total count BEFORE pagination
+                var totalCount = filteredEvents.Count;
+
+                // Calculate total pages
+                var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
+
+                // APPLY PAGINATION - Skip and Take
+                var pagedEvents = filteredEvents
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
                     .ToList();
 
                 var result = new List<EventCompleteResponseModel>();
 
-                foreach (var eventDetail in filteredEvents)
+                foreach (var eventDetail in pagedEvents) // Only fetch details for paginated events
                 {
                     var eventWithDetails = await GetEventWithArtistsAndGalleriesAsync(eventDetail.event_id);
                     if (eventWithDetails.Data != null)
@@ -913,8 +975,8 @@ namespace BAL.Services
                 response.Message = "Events fetched successfully";
                 response.ErrorCode = "0";
                 response.Data = result;
-                response.TotalCount = result.Count;
-                response.TotalPages = 1;
+                response.TotalCount = totalCount;  // Use the actual total count
+                response.TotalPages = totalPages;  // Calculate properly
                 response.CurrentPage = request.PageNumber;
                 response.PageSize = request.PageSize;
             }
