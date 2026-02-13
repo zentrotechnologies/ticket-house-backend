@@ -55,6 +55,7 @@ namespace BAL.Services
                     CustomerName = $"{bookingDetails.first_name} {bookingDetails.last_name}",
                     CustomerEmail = bookingDetails.email,
                     TotalAmount = bookingDetails.total_amount,
+                    FinalAmount = bookingDetails.final_amount, // ADD THIS LINE
                     Status = bookingDetails.status,
                     BookingDate = bookingDetails.created_on.ToString("yyyy-MM-dd HH:mm:ss"),
                     Seats = bookingDetails.BookingSeats.Select(bs => new

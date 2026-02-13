@@ -8,7 +8,8 @@ namespace DAL.Utilities
 {
     public static class FeeCalculator
     {
-        private const decimal CONVENIENCE_FEE_PERCENTAGE = 6.5m; // 6.5%
+        //private const decimal CONVENIENCE_FEE_PERCENTAGE = 6.5m; // 6.5%
+        private const decimal CONVENIENCE_FEE_PERCENTAGE = 6m; // CHANGED FROM 6.5% TO 6%
         private const decimal GST_PERCENTAGE = 18m; // 18%
 
         public static (decimal convenienceFee, decimal gstAmount, decimal finalAmount)

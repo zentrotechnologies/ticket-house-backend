@@ -50,6 +50,7 @@ namespace MODEL.Response
         public string location { get; set; }
         public string banner_image { get; set; }
         public decimal total_amount { get; set; }
+        public decimal final_amount { get; set; }
         public string status { get; set; }
         public DateTime created_on { get; set; }
         public string first_name { get; set; }
