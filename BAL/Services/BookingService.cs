@@ -41,6 +41,8 @@ namespace BAL.Services
         Task<CommonResponseModel<List<TicketScanHistoryModel>>> GetScanHistoryAsync(int bookingId);
         Task<CommonResponseModel<bool>> ResetScanCountAsync(int bookingId, string adminEmail);
         Task<CommonResponseModel<BookingDetailedResponse>> GetBookingDetailsByIdAsync(int bookingId);
+        Task<CommonResponseModel<EventSummaryResponse>> GetEventSummaryByEventIdAsync(int eventId);
+        Task<PagedBookingHistoryResponse> GetPagedBookingHistoryByUserIdAsync(BookingHistoryRequest request);
     }
     public class BookingService: IBookingService
     {
@@ -1570,6 +1572,96 @@ namespace BAL.Services
             }
 
             return response;
+        }
+
+        public async Task<CommonResponseModel<EventSummaryResponse>> GetEventSummaryByEventIdAsync(int eventId)
+        {
+            var response = new CommonResponseModel<EventSummaryResponse>();
+
+            try
+            {
+                if (eventId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid event ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                // Verify event exists
+                var eventExists = await _eventDetailsRepository.GetEventByIdAsync(eventId);
+                if (eventExists == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Event not found";
+                    response.ErrorCode = "404";
+                    return response;
+                }
+
+                var summary = await _bookingRepository.GetEventSummaryByEventIdAsync(eventId);
+
+                if (summary != null)
+                {
+                    response.Status = "Success";
+                    response.Message = "Event summary fetched successfully";
+                    response.ErrorCode = "0";
+                    response.Data = summary;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "No data found for this event";
+                    response.ErrorCode = "404";
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error fetching event summary: {ex.Message}";
+                response.ErrorCode = "1";
+
+                // Log the exception
+                // _logger.LogError(ex, "Error in GetEventSummaryByEventIdAsync for EventId: {EventId}", eventId);
+            }
+
+            return response;
+        }
+
+        public async Task<PagedBookingHistoryResponse> GetPagedBookingHistoryByUserIdAsync(BookingHistoryRequest request)
+        {
+            try
+            {
+                if (request.UserId == Guid.Empty)
+                {
+                    return new PagedBookingHistoryResponse
+                    {
+                        Status = "Failure",
+                        Message = "Valid user ID is required",
+                        ErrorCode = "400",
+                        Data = new List<BookingHistoryResponse>(),
+                        TotalCount = 0,
+                        TotalPages = 0,
+                        CurrentPage = request.PageNumber,
+                        PageSize = request.PageSize
+                    };
+                }
+
+                return await _bookingRepository.GetPagedBookingHistoryByUserIdAsync(request);
+            }
+            catch (Exception ex)
+            {
+                return new PagedBookingHistoryResponse
+                {
+                    Status = "Failure",
+                    Message = $"Error retrieving booking history: {ex.Message}",
+                    ErrorCode = "1",
+                    Data = new List<BookingHistoryResponse>(),
+                    TotalCount = 0,
+                    TotalPages = 0,
+                    CurrentPage = request.PageNumber,
+                    PageSize = request.PageSize
+                };
+            }
         }
     }
 }

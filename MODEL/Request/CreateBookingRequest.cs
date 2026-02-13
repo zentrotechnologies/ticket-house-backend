@@ -99,4 +99,14 @@ namespace MODEL.Request
         public int EventId { get; set; }
         public List<SeatSelection> SeatSelections { get; set; } = new List<SeatSelection>();
     }
+
+    public class BookingHistoryRequest
+    {
+        public Guid UserId { get; set; }
+        public int PageNumber { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string? FilterText { get; set; }
+        public string? SortBy { get; set; } = "created_on";
+        public string SortDirection { get; set; } = "desc";
+    }
 }

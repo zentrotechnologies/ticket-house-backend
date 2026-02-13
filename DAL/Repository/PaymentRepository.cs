@@ -29,25 +29,57 @@ namespace DAL.Repository
             _dbConnection = dbConnection;
         }
 
-        public async Task<int> UpdateBookingPaymentDetailsAsync(int bookingId, string orderId, string paymentId,
-            string signature, string paymentMethod, string paymentStatus, string updatedBy)
+        //public async Task<int> UpdateBookingPaymentDetailsAsync(int bookingId, string orderId, string paymentId,
+        //    string signature, string paymentMethod, string paymentStatus, string updatedBy)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+
+        //    var query = $@"
+        //        UPDATE {booking} 
+        //        SET razorpay_order_id = @razorpay_order_id,
+        //            razorpay_payment_id = @razorpay_payment_id,
+        //            razorpay_signature = @razorpay_signature,
+        //            payment_method = @payment_method,
+        //            payment_status = @payment_status,
+        //            payment_date = CASE WHEN @payment_status = 'captured' THEN CURRENT_TIMESTAMP ELSE payment_date END,
+        //            status = CASE WHEN @payment_status = 'captured' THEN 'confirmed' ELSE status END,
+        //            updated_by = @updated_by,
+        //            updated_on = CURRENT_TIMESTAMP
+        //        WHERE booking_id = @booking_id AND active = 1";
+
+        //    return await connection.ExecuteAsync(query, new
+        //    {
+        //        booking_id = bookingId,
+        //        razorpay_order_id = orderId,
+        //        razorpay_payment_id = paymentId,
+        //        razorpay_signature = signature,
+        //        payment_method = paymentMethod,
+        //        payment_status = paymentStatus,
+        //        updated_by = updatedBy
+        //    });
+        //}
+
+        public async Task<int> UpdateBookingPaymentDetailsAsync(int bookingId, string orderId, string paymentId, string signature, string paymentMethod, string paymentStatus, string updatedBy)
         {
             using var connection = _dbConnection.GetConnection();
 
             var query = $@"
-                UPDATE {booking} 
-                SET razorpay_order_id = @razorpay_order_id,
-                    razorpay_payment_id = @razorpay_payment_id,
-                    razorpay_signature = @razorpay_signature,
-                    payment_method = @payment_method,
-                    payment_status = @payment_status,
-                    payment_date = CASE WHEN @payment_status = 'captured' THEN CURRENT_TIMESTAMP ELSE payment_date END,
-                    status = CASE WHEN @payment_status = 'captured' THEN 'confirmed' ELSE status END,
-                    updated_by = @updated_by,
-                    updated_on = CURRENT_TIMESTAMP
-                WHERE booking_id = @booking_id AND active = 1";
+            UPDATE {booking} 
+            SET razorpay_order_id = @razorpay_order_id,
+                razorpay_payment_id = @razorpay_payment_id,
+                razorpay_signature = @razorpay_signature,
+                payment_method = @payment_method,
+                payment_status = @payment_status,
+                payment_date = CASE WHEN @payment_status = 'captured' THEN CURRENT_TIMESTAMP ELSE payment_date END,
+                -- REMOVED: Don't set status to confirmed here
+                -- status = CASE WHEN @payment_status = 'captured' THEN 'confirmed' ELSE status END,
+                updated_by = @updated_by,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE booking_id = @booking_id AND active = 1";
 
-            return await connection.ExecuteAsync(query, new
+            Console.WriteLine($"Updating booking {bookingId} with payment status: {paymentStatus}");
+
+            var result = await connection.ExecuteAsync(query, new
             {
                 booking_id = bookingId,
                 razorpay_order_id = orderId,
@@ -57,6 +89,10 @@ namespace DAL.Repository
                 payment_status = paymentStatus,
                 updated_by = updatedBy
             });
+
+            Console.WriteLine($"Update result: {result} rows affected");
+
+            return result;
         }
 
         public async Task<int> CreatePaymentHistoryAsync(PaymentHistoryModel paymentHistory)

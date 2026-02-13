@@ -49,6 +49,8 @@ namespace DAL.Repository
         // Admin methods
         Task<BookingScanSummaryResponse> GetBookingScanSummaryAsync(int bookingId);
         Task<BookingDetailedResponse> GetBookingDetailsByIdAsync(int bookingId);
+        Task<EventSummaryResponse> GetEventSummaryByEventIdAsync(int eventId);
+        Task<PagedBookingHistoryResponse> GetPagedBookingHistoryByUserIdAsync(BookingHistoryRequest request);
     }
     public class BookingRepository: IBookingRepository
     {
@@ -295,53 +297,178 @@ namespace DAL.Repository
 
             try
             {
-                // Update booking status
-                var updateBookingQuery = $@"
-                    UPDATE {booking} 
-                    SET status = @status,
-                        updated_by = @updated_by,
-                        updated_on = CURRENT_TIMESTAMP
-                    WHERE booking_id = @booking_id AND active = 1";
+                Console.WriteLine($"UpdateBookingStatusAndSeatsAsync started for BookingId: {bookingId}, Status: {status}");
 
-                await connection.ExecuteAsync(updateBookingQuery, new
+                // FIRST: Check if booking exists and get current status
+                var checkBookingQuery = $@"
+            SELECT status, payment_status FROM {booking} 
+            WHERE booking_id = @booking_id AND active = 1";
+
+                var bookingInfo = await connection.QueryFirstOrDefaultAsync<(string status, string payment_status)>(checkBookingQuery,
+                    new { booking_id = bookingId }, transaction);
+
+                if (bookingInfo == default)
+                {
+                    Console.WriteLine($"Booking {bookingId} not found");
+                    transaction.Rollback();
+                    return 0;
+                }
+
+                Console.WriteLine($"Current booking status: {bookingInfo.status}, Payment status: {bookingInfo.payment_status}");
+
+                // If already confirmed, don't deduct seats again
+                if (bookingInfo.status?.ToLower() == "confirmed")
+                {
+                    Console.WriteLine($"Booking {bookingId} is already confirmed, skipping seat deduction");
+                    transaction.Commit();
+                    return 1;
+                }
+
+                // Update booking status FIRST
+                var updateBookingQuery = $@"
+            UPDATE {booking} 
+            SET status = @status,
+                updated_by = @updated_by,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE booking_id = @booking_id AND active = 1";
+
+                var bookingUpdateResult = await connection.ExecuteAsync(updateBookingQuery, new
                 {
                     booking_id = bookingId,
                     status = status,
                     updated_by = updatedBy
                 }, transaction);
 
-                // Update seat availability
-                if (status.ToLower() == "confirmed" && seatUpdates != null)
+                Console.WriteLine($"Booking status update result: {bookingUpdateResult}");
+
+                // Update seat availability ONLY if status is confirmed
+                if (status.ToLower() == "confirmed" && seatUpdates != null && seatUpdates.Any())
                 {
+                    Console.WriteLine($"Processing {seatUpdates.Count} seat updates");
+
                     foreach (var seatUpdate in seatUpdates)
                     {
-                        var updateSeatQuery = $@"
-                            UPDATE {event_seat_type_inventory} 
-                            SET available_seats = available_seats - @quantity,
-                                updated_by = @updated_by,
-                                updated_on = CURRENT_TIMESTAMP
-                            WHERE event_seat_type_inventory_id = @seat_type_id 
-                            AND active = 1
-                            AND available_seats >= @quantity";
+                        Console.WriteLine($"Processing seat type {seatUpdate.SeatTypeId} with quantity {seatUpdate.Quantity}");
 
-                        await connection.ExecuteAsync(updateSeatQuery, new
+                        // Check current available seats before deducting
+                        var checkSeatQuery = $@"
+                    SELECT available_seats 
+                    FROM {event_seat_type_inventory} 
+                    WHERE event_seat_type_inventory_id = @seat_type_id 
+                    AND active = 1";
+
+                        var currentAvailable = await connection.QueryFirstOrDefaultAsync<int?>(checkSeatQuery,
+                            new { seat_type_id = seatUpdate.SeatTypeId }, transaction);
+
+                        Console.WriteLine($"Current available seats for type {seatUpdate.SeatTypeId}: {currentAvailable}");
+
+                        if (currentAvailable.HasValue && currentAvailable.Value >= seatUpdate.Quantity)
                         {
-                            seat_type_id = seatUpdate.SeatTypeId,
-                            quantity = seatUpdate.Quantity,
-                            updated_by = updatedBy
-                        }, transaction);
+                            var updateSeatQuery = $@"
+                        UPDATE {event_seat_type_inventory} 
+                        SET available_seats = available_seats - @quantity,
+                            updated_by = @updated_by,
+                            updated_on = CURRENT_TIMESTAMP
+                        WHERE event_seat_type_inventory_id = @seat_type_id 
+                        AND active = 1
+                        AND available_seats >= @quantity";
+
+                            var rowsAffected = await connection.ExecuteAsync(updateSeatQuery, new
+                            {
+                                seat_type_id = seatUpdate.SeatTypeId,
+                                quantity = seatUpdate.Quantity,
+                                updated_by = updatedBy
+                            }, transaction);
+
+                            Console.WriteLine($"Seat update for type {seatUpdate.SeatTypeId} affected {rowsAffected} rows");
+
+                            if (rowsAffected == 0)
+                            {
+                                throw new Exception($"Failed to deduct seats for seat type {seatUpdate.SeatTypeId}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Insufficient seats for type {seatUpdate.SeatTypeId}. Available: {currentAvailable}, Required: {seatUpdate.Quantity}");
+                            throw new Exception($"Insufficient seats available for seat type {seatUpdate.SeatTypeId}");
+                        }
                     }
+                }
+                else
+                {
+                    Console.WriteLine("No seat updates to process or status not confirmed");
                 }
 
                 transaction.Commit();
+                Console.WriteLine($"Transaction committed successfully for booking {bookingId}");
                 return 1;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"Error in UpdateBookingStatusAndSeatsAsync: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 transaction.Rollback();
                 throw;
             }
         }
+
+        //----correct before wrong seats count deduction
+        //public async Task<int> UpdateBookingStatusAndSeatsAsync(int bookingId, string status, List<SeatUpdateRequest> seatUpdates, string updatedBy)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+        //    connection.Open();
+
+        //    using var transaction = connection.BeginTransaction();
+
+        //    try
+        //    {
+        //        // Update booking status
+        //        var updateBookingQuery = $@"
+        //            UPDATE {booking} 
+        //            SET status = @status,
+        //                updated_by = @updated_by,
+        //                updated_on = CURRENT_TIMESTAMP
+        //            WHERE booking_id = @booking_id AND active = 1";
+
+        //        await connection.ExecuteAsync(updateBookingQuery, new
+        //        {
+        //            booking_id = bookingId,
+        //            status = status,
+        //            updated_by = updatedBy
+        //        }, transaction);
+
+        //        // Update seat availability
+        //        if (status.ToLower() == "confirmed" && seatUpdates != null)
+        //        {
+        //            foreach (var seatUpdate in seatUpdates)
+        //            {
+        //                var updateSeatQuery = $@"
+        //                    UPDATE {event_seat_type_inventory} 
+        //                    SET available_seats = available_seats - @quantity,
+        //                        updated_by = @updated_by,
+        //                        updated_on = CURRENT_TIMESTAMP
+        //                    WHERE event_seat_type_inventory_id = @seat_type_id 
+        //                    AND active = 1
+        //                    AND available_seats >= @quantity";
+
+        //                await connection.ExecuteAsync(updateSeatQuery, new
+        //                {
+        //                    seat_type_id = seatUpdate.SeatTypeId,
+        //                    quantity = seatUpdate.Quantity,
+        //                    updated_by = updatedBy
+        //                }, transaction);
+        //            }
+        //        }
+
+        //        transaction.Commit();
+        //        return 1;
+        //    }
+        //    catch
+        //    {
+        //        transaction.Rollback();
+        //        throw;
+        //    }
+        //}
 
         public async Task<BookingDetailsResponse> GetBookingDetailsAsync(int bookingId)
         {
@@ -1484,6 +1611,230 @@ namespace DAL.Repository
             bookingDetails.scan_history = scanHistory.ToList();
 
             return bookingDetails;
+        }
+
+        public async Task<EventSummaryResponse> GetEventSummaryByEventIdAsync(int eventId)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            var multiQuery = $@"
+            -- 1. Event Info
+            SELECT 
+                e.event_name,
+                e.event_date,
+                e.start_time,
+                e.end_time,
+                e.location
+            FROM {events} e
+            WHERE e.event_id = @EventId AND e.active = 1;
+
+            -- 2. Seat Type Inventory
+            SELECT 
+                esti.event_seat_type_inventory_id AS SeatTypeId,
+                esti.seat_name AS SeatName,
+                esti.price AS Price,
+                esti.total_seats AS TotalSeats,
+                esti.available_seats AS AvailableSeats,
+                (esti.total_seats - esti.available_seats) AS BookedSeats,
+                ((esti.total_seats - esti.available_seats) * esti.price) AS Revenue
+            FROM {event_seat_type_inventory} esti
+            WHERE esti.event_id = @EventId AND esti.active = 1
+            ORDER BY esti.seat_name;
+
+            -- 3. Payment Summary
+            SELECT 
+                COALESCE(SUM(b.final_amount), 0) AS TotalProfit,
+                COALESCE(SUM(b.convenience_fee), 0) AS TotalConvenienceFee,
+                COALESCE(SUM(b.gst_amount), 0) AS TotalGST,
+                COUNT(b.booking_id) AS TotalSuccessfulBookings,
+                MIN(b.created_on) AS FirstBookingDate,
+                MAX(b.created_on) AS LastBookingDate
+            FROM {booking} b
+            WHERE b.event_id = @EventId 
+                AND b.status = 'confirmed'
+                AND b.payment_status = 'captured'
+                AND b.active = 1;
+
+            -- 4. Actual Booked Seats by Type
+            SELECT 
+                bs.event_seat_type_inventory_id AS SeatTypeId,
+                SUM(bs.quantity) AS TotalBooked
+            FROM {booking_seat} bs
+            INNER JOIN {booking} b ON bs.booking_id = b.booking_id
+            WHERE b.event_id = @EventId 
+                AND b.status = 'confirmed'
+                AND b.payment_status = 'captured'
+                AND b.active = 1
+                AND bs.active = 1
+            GROUP BY bs.event_seat_type_inventory_id;";
+
+            using var multi = await connection.QueryMultipleAsync(multiQuery, new { EventId = eventId });
+
+            // Read results
+            var eventInfo = await multi.ReadFirstOrDefaultAsync<(string EventName, DateTime EventDate, TimeSpan StartTime, TimeSpan EndTime, string Location)>();
+            var seatTypes = await multi.ReadAsync<SeatTypeSummary>();
+            var paymentSummary = await multi.ReadFirstOrDefaultAsync<(decimal TotalProfit, decimal TotalConvenienceFee, decimal TotalGST, int TotalBookings, DateTime? FirstDate, DateTime? LastDate)>();
+            var bookedByType = await multi.ReadAsync<(int SeatTypeId, int TotalBooked)>();
+
+            if (eventInfo == default)
+            {
+                return null;
+            }
+
+            var seatTypeList = seatTypes.ToList();
+            var bookedDict = bookedByType.ToDictionary(x => x.SeatTypeId, x => x.TotalBooked);
+
+            // Update seat types with actual booked counts
+            foreach (var seatType in seatTypeList)
+            {
+                if (bookedDict.TryGetValue(seatType.SeatTypeId, out int actualBooked))
+                {
+                    seatType.BookedSeats = actualBooked;
+                    seatType.Revenue = actualBooked * seatType.Price;
+                }
+
+                seatType.OccupancyPercentage = seatType.TotalSeats > 0
+                    ? Math.Round((decimal)seatType.BookedSeats / seatType.TotalSeats * 100, 2)
+                    : 0;
+            }
+
+            var response = new EventSummaryResponse
+            {
+                EventId = eventId,
+                EventName = eventInfo.EventName,
+                EventDate = eventInfo.EventDate,
+                StartTime = eventInfo.StartTime,
+                EndTime = eventInfo.EndTime,
+                Location = eventInfo.Location,
+                SeatTypeDetails = seatTypeList,
+                TotalSeats = seatTypeList.Sum(s => s.TotalSeats),
+                AvailableSeats = seatTypeList.Sum(s => s.AvailableSeats),
+                BookedSeats = seatTypeList.Sum(s => s.BookedSeats),
+                TotalProfit = paymentSummary.TotalProfit,
+                PaymentDetails = new PaymentSummary
+                {
+                    TotalSuccessfulBookings = paymentSummary.TotalBookings,
+                    TotalAmount = paymentSummary.TotalProfit,
+                    TotalConvenienceFee = paymentSummary.TotalConvenienceFee,
+                    TotalGST = paymentSummary.TotalGST,
+                    FirstBookingDate = paymentSummary.FirstDate,
+                    LastBookingDate = paymentSummary.LastDate
+                }
+            };
+
+            response.OccupancyPercentage = response.TotalSeats > 0
+                ? Math.Round((decimal)response.BookedSeats / response.TotalSeats * 100, 2)
+                : 0;
+
+            return response;
+        }
+
+
+        public async Task<PagedBookingHistoryResponse> GetPagedBookingHistoryByUserIdAsync(BookingHistoryRequest request)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            // Calculate offset
+            int offset = (request.PageNumber - 1) * request.PageSize;
+
+            // Count query for total records
+            var countQuery = $@"
+            SELECT COUNT(DISTINCT b.booking_id)
+            FROM {booking} b
+            INNER JOIN {events} e ON b.event_id = e.event_id
+            WHERE b.user_id = @user_id 
+              AND b.active = 1 
+              AND e.active = 1";
+
+            var totalCount = await connection.ExecuteScalarAsync<int>(countQuery, new { user_id = request.UserId });
+
+            // Main query with pagination
+            var query = $@"
+            SELECT 
+                b.booking_id,
+                b.booking_code,
+                e.event_name,
+                e.event_date,
+                e.start_time,
+                e.end_time,
+                e.location,
+                e.full_address,
+                b.final_amount,
+                b.total_amount,
+                b.convenience_fee,
+                b.gst_amount,
+                b.currency,
+                b.payment_method,
+                b.payment_status,
+                b.payment_date,
+                b.razorpay_payment_id,
+                b.razorpay_order_id,
+                b.status as booking_status,
+                b.created_on,
+                bs.booking_seat_id,
+                bs.event_seat_type_inventory_id,
+                bs.quantity,
+                bs.scanned_quantity,
+                bs.remaining_quantity,
+                bs.price_per_seat,
+                bs.subtotal,
+                bs.last_scan_time,
+                bs.scanned_by,
+                esti.seat_name
+            FROM {booking} b
+            INNER JOIN {events} e ON b.event_id = e.event_id
+            INNER JOIN {booking_seat} bs ON b.booking_id = bs.booking_id
+            INNER JOIN {event_seat_type_inventory} esti ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id
+            WHERE b.user_id = @user_id 
+              AND b.active = 1 
+              AND e.active = 1
+              AND bs.active = 1
+            ORDER BY b.created_on DESC, b.booking_id, bs.booking_seat_id
+            LIMIT @pageSize OFFSET @offset";
+
+            var bookingDict = new Dictionary<int, BookingHistoryResponse>();
+
+            var result = await connection.QueryAsync<BookingHistoryResponse, BookingSeatHistoryResponse, BookingHistoryResponse>(
+                query,
+                (booking, seat) =>
+                {
+                    if (!bookingDict.TryGetValue(booking.booking_id, out var bookingEntry))
+                    {
+                        bookingEntry = booking;
+                        bookingEntry.seats = new List<BookingSeatHistoryResponse>();
+                        bookingDict.Add(booking.booking_id, bookingEntry);
+                    }
+
+                    if (seat != null)
+                    {
+                        bookingEntry.seats.Add(seat);
+                    }
+
+                    return bookingEntry;
+                },
+                new
+                {
+                    user_id = request.UserId,
+                    pageSize = request.PageSize,
+                    offset = offset
+                },
+                splitOn: "booking_seat_id"
+            );
+
+            var bookings = bookingDict.Values.ToList();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
+
+            return new PagedBookingHistoryResponse
+            {
+                Status = "Success",
+                Message = bookings.Any() ? "Booking history retrieved successfully" : "No booking history found",
+                ErrorCode = "0",
+                Data = bookings,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                CurrentPage = request.PageNumber,
+                PageSize = request.PageSize
+            };
         }
     }
 }

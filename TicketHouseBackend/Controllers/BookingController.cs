@@ -809,5 +809,106 @@ namespace TicketHouseBackend.Controllers
                 };
             }
         }
+
+        [HttpGet("GetEventSummary/{eventId}")]
+        public async Task<CommonResponseModel<EventSummaryResponse>> GetEventSummaryByEventId(int eventId)
+        {
+            try
+            {
+                if (eventId <= 0)
+                {
+                    return new CommonResponseModel<EventSummaryResponse>
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Valid event ID is required. Received: " + eventId
+                    };
+                }
+
+                // Optional: Check if the user has permission to view this event's summary
+                var currentUserRole = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
+                var currentUserId = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value;
+
+                // For non-admin users (organizers), you might want to verify they own this event
+                // This would require additional logic to check if the organizer_id matches the current user
+
+                return await _bookingService.GetEventSummaryByEventIdAsync(eventId);
+            }
+            catch (Exception ex)
+            {
+                return new CommonResponseModel<EventSummaryResponse>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = $"An error occurred: {ex.Message}"
+                };
+            }
+        }
+
+        [HttpPost("GetPagedBookingHistoryByUserId")]
+        public async Task<ActionResult<PagedBookingHistoryResponse>> GetPagedBookingHistoryByUserId([FromBody] BookingHistoryRequest request)
+        {
+            try
+            {
+                if (request.UserId == Guid.Empty)
+                {
+                    return BadRequest(new PagedBookingHistoryResponse
+                    {
+                        ErrorCode = "400",
+                        Status = "Error",
+                        Message = "Valid user ID is required",
+                        Data = new List<BookingHistoryResponse>(),
+                        TotalCount = 0,
+                        TotalPages = 0,
+                        CurrentPage = request.PageNumber,
+                        PageSize = request.PageSize
+                    });
+                }
+
+                // Validate pagination parameters
+                if (request.PageNumber < 1) request.PageNumber = 1;
+                if (request.PageSize < 1) request.PageSize = 10;
+                if (request.PageSize > 100) request.PageSize = 100; // Max page size
+
+                // Authorization check (optional - uncomment if needed)
+                // var currentUserId = GetCurrentUserId();
+                // var currentUserRole = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
+                // if (currentUserRole != "Admin" && currentUserRole != "Organizer" && currentUserId != request.UserId)
+                // {
+                //     return Forbid();
+                // }
+
+                var result = await _bookingService.GetPagedBookingHistoryByUserIdAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new PagedBookingHistoryResponse
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message,
+                    Data = new List<BookingHistoryResponse>(),
+                    TotalCount = 0,
+                    TotalPages = 0,
+                    CurrentPage = request.PageNumber,
+                    PageSize = request.PageSize
+                });
+            }
+        }
+
+        // Helper method to get current user ID from claims
+        private Guid GetCurrentUserId()
+        {
+            var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                              _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value;
+
+            if (Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return userId;
+            }
+
+            return Guid.Empty;
+        }
     }
 }

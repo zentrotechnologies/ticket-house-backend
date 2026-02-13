@@ -446,6 +446,8 @@ namespace BAL.Services
                     return response;
                 }
 
+                Console.WriteLine($"Verifying payment for booking {request.BookingId}. Current status: {booking.status}, Payment status: {booking.payment_status}");
+
                 // Verify payment signature
                 var isValidSignature = VerifyRazorpaySignature(
                     request.RazorpayOrderId,
@@ -465,22 +467,57 @@ namespace BAL.Services
                 var payment = _razorpayClient.Payment.Fetch(request.RazorpayPaymentId);
                 var paymentStatus = payment["status"].ToString().ToLower();
 
-                // Update booking payment status
+                Console.WriteLine($"Razorpay payment status: {paymentStatus}");
+
+                // Parse payment method details
+                string paymentMethod = payment["method"].ToString();
+                string cardLast4 = string.Empty;
+                string cardNetwork = string.Empty;
+                string bankName = string.Empty;
+                string wallet = string.Empty;
+                string vpa = string.Empty;
+
+                // Safely extract payment details
+                if (payment["method"].ToString() == "card")
+                {
+                    var cardData = payment["card"];
+                    cardLast4 = cardData?["last4"]?.ToString() ?? "";
+                    cardNetwork = cardData?["network"]?.ToString() ?? "";
+                }
+                else if (payment["method"].ToString() == "netbanking")
+                {
+                    bankName = payment["bank"]?.ToString() ?? "";
+                }
+                else if (payment["method"].ToString() == "wallet")
+                {
+                    wallet = payment["wallet"]?.ToString() ?? "";
+                }
+                else if (payment["method"].ToString() == "upi")
+                {
+                    vpa = payment["vpa"]?.ToString() ?? "";
+                }
+
+                // Update booking payment details (but NOT the status to confirmed yet)
                 var updatedRows = await _paymentRepository.UpdateBookingPaymentDetailsAsync(
                     booking.booking_id,
                     request.RazorpayOrderId,
                     request.RazorpayPaymentId,
                     request.RazorpaySignature,
-                    payment["method"].ToString(),
+                    paymentMethod,
                     paymentStatus,
                     booking.user_id.ToString());
 
+                Console.WriteLine($"Updated payment details, rows affected: {updatedRows}");
+
                 if (updatedRows > 0)
                 {
-                    // CRITICAL: Only confirm booking if payment is SUCCESSFUL
-                    if (paymentStatus == "captured")
+                    // CRITICAL: Only confirm booking and DEDUCT SEATS if payment is SUCCESSFUL (captured)
+                    // AND booking is not already confirmed
+                    if (paymentStatus == "captured" && booking.status?.ToLower() != "confirmed")
                     {
-                        // Confirm the booking
+                        Console.WriteLine($"Payment captured for booking {booking.booking_id}, calling ConfirmBookingAfterPayment");
+
+                        // This method will deduct the seats and set status to confirmed
                         await ConfirmBookingAfterPayment(booking.booking_id, booking.user_id.ToString());
 
                         response.Status = "Success";
@@ -494,25 +531,93 @@ namespace BAL.Services
                             "payment_failed",
                             booking.user_id.ToString());
 
-                        // Release reserved seats
-                        await ReleaseSeatsForFailedPayment(booking.booking_id);
-
                         response.Status = "Failure";
                         response.Message = "Payment failed. Booking not confirmed.";
                         response.ErrorCode = "400";
                     }
                     else
                     {
-                        // Other payment statuses (authorized, etc.)
-                        response.Status = "Success";
-                        response.Message = "Payment verified. Booking pending confirmation.";
-                    }
-                }
+                        // Other payment statuses (authorized, etc.) or already confirmed
+                        if (booking.status?.ToLower() != "confirmed")
+                        {
+                            await _bookingRepository.UpdateBookingStatusAsync(
+                                booking.booking_id,
+                                "payment_pending",
+                                booking.user_id.ToString());
+                        }
 
-                // ... rest of payment history creation code ...
+                        response.Status = "Success";
+                        response.Message = booking.status?.ToLower() == "confirmed"
+                            ? "Booking already confirmed"
+                            : "Payment verified. Booking pending confirmation.";
+                    }
+
+                    // Create payment history record (always create regardless of status)
+                    var paymentHistory = new PaymentHistoryModel
+                    {
+                        booking_id = booking.booking_id,
+                        razorpay_order_id = request.RazorpayOrderId,
+                        razorpay_payment_id = request.RazorpayPaymentId,
+                        razorpay_signature = request.RazorpaySignature,
+                        amount = booking.total_amount,
+                        currency = booking.currency,
+                        payment_method = paymentMethod,
+                        payment_status = paymentStatus,
+                        payment_date = DateTime.UtcNow,
+                        card_last4 = cardLast4,
+                        card_network = cardNetwork,
+                        bank_name = bankName,
+                        wallet = wallet,
+                        vpa = vpa,
+                        razorpay_notes = booking.razorpay_notes,
+                        created_by = booking.user_id.ToString(),
+                        updated_by = booking.user_id.ToString()
+                    };
+
+                    await _paymentRepository.CreatePaymentHistoryAsync(paymentHistory);
+
+                    // Create verification response
+                    var verificationResponse = new PaymentVerificationResponse
+                    {
+                        IsSuccess = paymentStatus == "captured",
+                        Message = paymentStatus == "captured" ? "Payment verified successfully" : $"Payment {paymentStatus}",
+                        PaymentId = request.RazorpayPaymentId,
+                        OrderId = request.RazorpayOrderId,
+                        PaymentMethod = paymentMethod,
+                        CardLast4 = cardLast4,
+                        CardNetwork = cardNetwork,
+                        BankName = bankName,
+                        Wallet = wallet,
+                        VPA = vpa,
+                        PaymentStatus = paymentStatus,
+                        PaymentDate = DateTime.UtcNow,
+                        PaymentDetails = new Dictionary<string, string>
+                {
+                    { "id", payment["id"].ToString() },
+                    { "amount", payment["amount"].ToString() },
+                    { "currency", payment["currency"].ToString() },
+                    { "status", paymentStatus },
+                    { "method", paymentMethod }
+                }
+                    };
+
+                    response.Status = paymentStatus == "captured" ? "Success" : "Failure";
+                    response.Message = verificationResponse.Message;
+                    response.ErrorCode = paymentStatus == "captured" ? "0" : "400";
+                    response.Data = verificationResponse;
+                }
+                else
+                {
+                    response.Status = "Failure";
+                    response.Message = "Failed to update payment details";
+                    response.ErrorCode = "1";
+                }
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error verifying payment: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+
                 response.Status = "Failure";
                 response.Message = $"Error verifying payment: {ex.Message}";
                 response.ErrorCode = "1";
@@ -520,6 +625,98 @@ namespace BAL.Services
 
             return response;
         }
+
+        //-------correct before seats deduction logic when failed payment
+        //public async Task<CommonResponseModel<PaymentVerificationResponse>> VerifyPaymentAsync(VerifyPaymentRequest request, string userEmail)
+        //{
+        //    var response = new CommonResponseModel<PaymentVerificationResponse>();
+
+        //    try
+        //    {
+        //        // Validate booking
+        //        var booking = await _bookingRepository.GetBookingByIdAsync(request.BookingId);
+        //        if (booking == null)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "Booking not found";
+        //            response.ErrorCode = "404";
+        //            return response;
+        //        }
+
+        //        // Verify payment signature
+        //        var isValidSignature = VerifyRazorpaySignature(
+        //            request.RazorpayOrderId,
+        //            request.RazorpayPaymentId,
+        //            request.RazorpaySignature
+        //        );
+
+        //        if (!isValidSignature)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "Payment signature verification failed";
+        //            response.ErrorCode = "400";
+        //            return response;
+        //        }
+
+        //        // Get payment details from Razorpay
+        //        var payment = _razorpayClient.Payment.Fetch(request.RazorpayPaymentId);
+        //        var paymentStatus = payment["status"].ToString().ToLower();
+
+        //        // Update booking payment status
+        //        var updatedRows = await _paymentRepository.UpdateBookingPaymentDetailsAsync(
+        //            booking.booking_id,
+        //            request.RazorpayOrderId,
+        //            request.RazorpayPaymentId,
+        //            request.RazorpaySignature,
+        //            payment["method"].ToString(),
+        //            paymentStatus,
+        //            booking.user_id.ToString());
+
+        //        if (updatedRows > 0)
+        //        {
+        //            // CRITICAL: Only confirm booking if payment is SUCCESSFUL
+        //            if (paymentStatus == "captured")
+        //            {
+        //                // Confirm the booking
+        //                await ConfirmBookingAfterPayment(booking.booking_id, booking.user_id.ToString());
+
+        //                response.Status = "Success";
+        //                response.Message = "Payment verified and booking confirmed successfully";
+        //            }
+        //            else if (paymentStatus == "failed")
+        //            {
+        //                // Payment failed - update booking status to failed
+        //                await _bookingRepository.UpdateBookingStatusAsync(
+        //                    booking.booking_id,
+        //                    "payment_failed",
+        //                    booking.user_id.ToString());
+
+        //                // Release reserved seats
+        //                await ReleaseSeatsForFailedPayment(booking.booking_id);
+
+        //                response.Status = "Failure";
+        //                response.Message = "Payment failed. Booking not confirmed.";
+        //                response.ErrorCode = "400";
+        //            }
+        //            else
+        //            {
+        //                // Other payment statuses (authorized, etc.)
+        //                response.Status = "Success";
+        //                response.Message = "Payment verified. Booking pending confirmation.";
+        //            }
+        //        }
+
+        //        // ... rest of payment history creation code ...
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        response.Status = "Failure";
+        //        response.Message = $"Error verifying payment: {ex.Message}";
+        //        response.ErrorCode = "1";
+        //    }
+
+        //    return response;
+        //}
 
         private bool VerifyRazorpaySignature(string orderId, string paymentId, string signature)
         {
@@ -542,16 +739,53 @@ namespace BAL.Services
             }
         }
 
+        //private async Task ConfirmBookingAfterPayment(int bookingId, string userId)
+        //{
+        //    try
+        //    {
+        //        var bookingDetails = await _bookingRepository.GetBookingDetailsAsync(bookingId);
+        //        if (bookingDetails == null) return;
+
+        //        var seatUpdates = new List<SeatUpdateRequest>();
+        //        foreach (var seat in bookingDetails.BookingSeats)
+        //        {
+        //            seatUpdates.Add(new SeatUpdateRequest
+        //            {
+        //                SeatTypeId = seat.event_seat_type_inventory_id,
+        //                Quantity = seat.quantity
+        //            });
+        //        }
+
+        //        // Update booking status to confirmed and reduce seat availability
+        //        await _bookingRepository.UpdateBookingStatusAndSeatsAsync(
+        //            bookingId, "confirmed", seatUpdates, userId);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // Log error but don't fail the payment verification
+        //        Console.WriteLine($"Error confirming booking after payment: {ex.Message}");
+        //    }
+        //}
+
         private async Task ConfirmBookingAfterPayment(int bookingId, string userId)
         {
             try
             {
+                Console.WriteLine($"Starting ConfirmBookingAfterPayment for BookingId: {bookingId}");
+
                 var bookingDetails = await _bookingRepository.GetBookingDetailsAsync(bookingId);
-                if (bookingDetails == null) return;
+                if (bookingDetails == null)
+                {
+                    Console.WriteLine($"Booking details not found for {bookingId}");
+                    return;
+                }
+
+                Console.WriteLine($"Found booking details with {bookingDetails.BookingSeats?.Count} seats");
 
                 var seatUpdates = new List<SeatUpdateRequest>();
                 foreach (var seat in bookingDetails.BookingSeats)
                 {
+                    Console.WriteLine($"Processing seat - TypeId: {seat.event_seat_type_inventory_id}, Quantity: {seat.quantity}");
                     seatUpdates.Add(new SeatUpdateRequest
                     {
                         SeatTypeId = seat.event_seat_type_inventory_id,
@@ -560,13 +794,17 @@ namespace BAL.Services
                 }
 
                 // Update booking status to confirmed and reduce seat availability
-                await _bookingRepository.UpdateBookingStatusAndSeatsAsync(
+                var result = await _bookingRepository.UpdateBookingStatusAndSeatsAsync(
                     bookingId, "confirmed", seatUpdates, userId);
+
+                Console.WriteLine($"UpdateBookingStatusAndSeatsAsync returned: {result}");
+                Console.WriteLine($"Successfully confirmed booking {bookingId} and deducted {seatUpdates.Count} seat types");
             }
             catch (Exception ex)
             {
-                // Log error but don't fail the payment verification
                 Console.WriteLine($"Error confirming booking after payment: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw; // Rethrow so we know it failed
             }
         }
 
@@ -833,6 +1071,160 @@ namespace BAL.Services
         }
 
         // In PaymentService.cs
+        //---------correct before seats deduction even it failed
+        //public async Task<CommonResponseModel<PaymentOrderResponse>> CreateBookingWithPaymentAsync(CreateBookingWithPaymentRequest request, string userEmail)
+        //{
+        //    var response = new CommonResponseModel<PaymentOrderResponse>();
+
+        //    try
+        //    {
+        //        // Get user
+        //        var user = await _userRepository.GetUserByEmail(userEmail);
+        //        if (user == null)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "User not found";
+        //            response.ErrorCode = "404";
+        //            return response;
+        //        }
+
+        //        // Check event exists
+        //        var eventDetails = await _eventDetailsRepository.GetEventByIdAsync(request.EventId);
+        //        if (eventDetails == null)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "Event not found";
+        //            response.ErrorCode = "404";
+        //            return response;
+        //        }
+
+        //        // Check seat availability
+        //        foreach (var seatSelection in request.SeatSelections)
+        //        {
+        //            var isAvailable = await _bookingRepository.CheckSeatAvailabilityAsync(
+        //                seatSelection.SeatTypeId, seatSelection.Quantity);
+
+        //            if (!isAvailable)
+        //            {
+        //                var seatType = await _bookingRepository.GetSeatTypeByIdAsync(seatSelection.SeatTypeId);
+        //                response.Status = "Failure";
+        //                response.Message = $"Not enough seats available for {seatType?.seat_name}";
+        //                response.ErrorCode = "400";
+        //                return response;
+        //            }
+        //        }
+
+        //        // Temporarily reserve seats
+        //        string userIdString = user.user_id.ToString();
+        //        foreach (var seatSelection in request.SeatSelections)
+        //        {
+        //            await _bookingRepository.ReserveSeatsAsync(
+        //                seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
+        //        }
+
+        //        // Calculate amounts
+        //        decimal totalAmount = 0;
+        //        foreach (var seatSelection in request.SeatSelections)
+        //        {
+        //            var seatType = await _bookingRepository.GetSeatTypeByIdAsync(seatSelection.SeatTypeId);
+        //            var subtotal = seatType.price * seatSelection.Quantity;
+        //            totalAmount += subtotal;
+        //        }
+
+        //        // Calculate fees
+        //        var fees = FeeCalculator.CalculateFees(totalAmount);
+
+        //        // Generate booking code
+        //        var bookingCode = $"ZTH{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
+
+        //        // Create booking in PENDING status
+        //        var booking = new BookingModel
+        //        {
+        //            booking_code = bookingCode,
+        //            user_id = user.user_id,
+        //            event_id = request.EventId,
+        //            total_amount = totalAmount,
+        //            booking_amount = totalAmount,
+        //            convenience_fee = fees.convenienceFee,
+        //            gst_amount = fees.gstAmount,
+        //            final_amount = fees.finalAmount, // This is what will be sent to Razorpay
+        //            status = "pending_payment",
+        //            currency = "INR",
+        //            created_by = userIdString,
+        //            updated_by = userIdString
+        //        };
+
+        //        var bookingId = await _bookingRepository.CreateBookingAsync(booking);
+
+        //        if (bookingId > 0)
+        //        {
+        //            // Create booking seats
+        //            var bookingSeats = new List<BookingSeatModel>();
+        //            foreach (var seatSelection in request.SeatSelections)
+        //            {
+        //                var seatType = await _bookingRepository.GetSeatTypeByIdAsync(seatSelection.SeatTypeId);
+        //                var subtotal = seatType.price * seatSelection.Quantity;
+
+        //                var bookingSeat = new BookingSeatModel
+        //                {
+        //                    booking_id = bookingId,
+        //                    event_seat_type_inventory_id = seatSelection.SeatTypeId,
+        //                    quantity = seatSelection.Quantity,
+        //                    remaining_quantity = seatSelection.Quantity,
+        //                    price_per_seat = seatType.price,
+        //                    subtotal = subtotal,
+        //                    created_by = userIdString,
+        //                    updated_by = userIdString
+        //                };
+
+        //                bookingSeats.Add(bookingSeat);
+        //            }
+
+        //            await _bookingRepository.CreateBookingSeatsAsync(bookingSeats);
+
+        //            // Now create Razorpay order - IMPORTANT: Use final_amount
+        //            var paymentRequest = new CreatePaymentOrderRequest
+        //            {
+        //                BookingId = bookingId,
+        //                Amount = fees.finalAmount, // Use final amount, not total amount
+        //                Currency = "INR",
+        //                Notes = new Dictionary<string, string>
+        //        {
+        //            { "eventId", request.EventId.ToString() },
+        //            { "eventName", eventDetails.event_name },
+        //            { "userId", user.user_id.ToString() },
+        //            { "bookingCode", bookingCode }
+        //        }
+        //            };
+
+        //            // Call the fixed CreatePaymentOrderAsync method
+        //            return await CreatePaymentOrderAsync(paymentRequest, userEmail);
+        //        }
+        //        else
+        //        {
+        //            // Release reserved seats if booking creation failed
+        //            foreach (var seatSelection in request.SeatSelections)
+        //            {
+        //                await _bookingRepository.ReleaseSeatsAsync(
+        //                    seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
+        //            }
+
+        //            response.Status = "Failure";
+        //            response.Message = "Failed to create booking";
+        //            response.ErrorCode = "1";
+        //            return response;
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        response.Status = "Failure";
+        //        response.Message = $"Error creating booking with payment: {ex.Message}";
+        //        response.ErrorCode = "1";
+        //        return response;
+        //    }
+        //}
+
+
         public async Task<CommonResponseModel<PaymentOrderResponse>> CreateBookingWithPaymentAsync(CreateBookingWithPaymentRequest request, string userEmail)
         {
             var response = new CommonResponseModel<PaymentOrderResponse>();
@@ -859,7 +1251,7 @@ namespace BAL.Services
                     return response;
                 }
 
-                // Check seat availability
+                // Check seat availability (BUT DON'T RESERVE YET)
                 foreach (var seatSelection in request.SeatSelections)
                 {
                     var isAvailable = await _bookingRepository.CheckSeatAvailabilityAsync(
@@ -875,13 +1267,13 @@ namespace BAL.Services
                     }
                 }
 
-                // Temporarily reserve seats
-                string userIdString = user.user_id.ToString();
-                foreach (var seatSelection in request.SeatSelections)
-                {
-                    await _bookingRepository.ReserveSeatsAsync(
-                        seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
-                }
+                // REMOVED: Temporarily reserve seats - DON'T RESERVE UNTIL PAYMENT IS CONFIRMED
+                // string userIdString = user.user_id.ToString();
+                // foreach (var seatSelection in request.SeatSelections)
+                // {
+                //     await _bookingRepository.ReserveSeatsAsync(
+                //         seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
+                // }
 
                 // Calculate amounts
                 decimal totalAmount = 0;
@@ -898,7 +1290,7 @@ namespace BAL.Services
                 // Generate booking code
                 var bookingCode = $"ZTH{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
 
-                // Create booking in PENDING status
+                // Create booking in PENDING_PAYMENT status
                 var booking = new BookingModel
                 {
                     booking_code = bookingCode,
@@ -908,18 +1300,18 @@ namespace BAL.Services
                     booking_amount = totalAmount,
                     convenience_fee = fees.convenienceFee,
                     gst_amount = fees.gstAmount,
-                    final_amount = fees.finalAmount, // This is what will be sent to Razorpay
-                    status = "pending_payment",
+                    final_amount = fees.finalAmount,
+                    status = "pending_payment", // Status is pending payment, not confirmed
                     currency = "INR",
-                    created_by = userIdString,
-                    updated_by = userIdString
+                    created_by = user.user_id.ToString(),
+                    updated_by = user.user_id.ToString()
                 };
 
                 var bookingId = await _bookingRepository.CreateBookingAsync(booking);
 
                 if (bookingId > 0)
                 {
-                    // Create booking seats
+                    // Create booking seats (but these are just records, seats not deducted yet)
                     var bookingSeats = new List<BookingSeatModel>();
                     foreach (var seatSelection in request.SeatSelections)
                     {
@@ -931,11 +1323,11 @@ namespace BAL.Services
                             booking_id = bookingId,
                             event_seat_type_inventory_id = seatSelection.SeatTypeId,
                             quantity = seatSelection.Quantity,
-                            remaining_quantity = seatSelection.Quantity,
+                            remaining_quantity = seatSelection.Quantity, // Initially same as quantity
                             price_per_seat = seatType.price,
                             subtotal = subtotal,
-                            created_by = userIdString,
-                            updated_by = userIdString
+                            created_by = user.user_id.ToString(),
+                            updated_by = user.user_id.ToString()
                         };
 
                         bookingSeats.Add(bookingSeat);
@@ -947,7 +1339,7 @@ namespace BAL.Services
                     var paymentRequest = new CreatePaymentOrderRequest
                     {
                         BookingId = bookingId,
-                        Amount = fees.finalAmount, // Use final amount, not total amount
+                        Amount = fees.finalAmount,
                         Currency = "INR",
                         Notes = new Dictionary<string, string>
                 {
@@ -963,13 +1355,7 @@ namespace BAL.Services
                 }
                 else
                 {
-                    // Release reserved seats if booking creation failed
-                    foreach (var seatSelection in request.SeatSelections)
-                    {
-                        await _bookingRepository.ReleaseSeatsAsync(
-                            seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
-                    }
-
+                    // No need to release seats since we never reserved them
                     response.Status = "Failure";
                     response.Message = "Failed to create booking";
                     response.ErrorCode = "1";
