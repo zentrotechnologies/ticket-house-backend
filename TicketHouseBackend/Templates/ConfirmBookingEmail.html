@@ -1,0 +1,284 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Booking Confirmed - TicketHouse</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .header {
+            padding: 40px 30px;
+            background: linear-gradient(135deg, rgb(146, 52, 234) 0%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
+            text-align: center;
+            border-radius: 16px 16px 0 0;
+        }
+
+            .header h1 {
+                margin: 0 0 10px 0;
+                font-size: 32px;
+                font-weight: 800;
+                color: #ffffff;
+            }
+
+            .header p {
+                margin: 0;
+                font-size: 16px;
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+        .content {
+            padding: 30px;
+        }
+
+        .booking-badge {
+            background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1));
+            padding: 12px 30px;
+            border-radius: 40px;
+            font-size: 18px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .section-title {
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, rgb(146, 52, 234) 0%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .event-detail-label {
+            padding: 8px 0;
+            color: #64748b;
+            width: 120px;
+        }
+
+        .event-detail-value {
+            padding: 8px 0;
+            font-weight: 600;
+        }
+
+        .ticket-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+
+            .ticket-table th {
+                text-align: left;
+                padding: 12px 8px;
+                background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1));
+                font-weight: 600;
+            }
+
+            .ticket-table td {
+                padding: 12px 8px;
+            }
+
+        .ticket-row {
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .fee-row {
+            padding: 8px 8px;
+            text-align: right;
+            color: #64748b;
+        }
+
+        .total-box {
+            background: linear-gradient(135deg, rgb(146, 52, 234) 0%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .total-label {
+            margin: 0 0 5px 0;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+        }
+
+        .total-amount {
+            margin: 0;
+            font-size: 36px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .total-subtext {
+            margin: 5px 0 0 0;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+        }
+
+        .notes-box {
+            background-color: #fff9e6;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #ffd700;
+        }
+
+        .footer {
+            background-color: #000000;
+            padding: 30px;
+            text-align: center;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .footer-logo {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, rgb(146, 52, 234) 0%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .footer-text {
+            margin: 5px 0;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .footer-copyright {
+            margin: 5px 0;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎉 BOOKING CONFIRMED</h1>
+            <p>Your tickets are ready!</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Booking Code -->
+            <div style="text-align: center; margin-bottom: 25px;">
+                <span class="booking-badge">
+                    Booking #{{BookingCode}}
+                </span>
+            </div>
+
+            <!-- Event Details -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+                <tr>
+                    <td colspan="2" style="padding-bottom: 15px;">
+                        <h2 class="section-title">Event Details</h2>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="event-detail-label">Event:</td>
+                    <td class="event-detail-value">{{EventName}}</td>
+                </tr>
+                <tr>
+                    <td class="event-detail-label">Date:</td>
+                    <td class="event-detail-value">{{EventDate}}</td>
+                </tr>
+                <tr>
+                    <td class="event-detail-label">Time:</td>
+                    <td class="event-detail-value">{{EventTime}}</td>
+                </tr>
+                <tr>
+                    <td class="event-detail-label">Venue:</td>
+                    <td class="event-detail-value">{{Venue}}</td>
+                </tr>
+            </table>
+
+            <!-- Ticket Details -->
+            <table class="ticket-table">
+                <tr>
+                    <td colspan="4" style="padding-bottom: 15px;">
+                        <h2 class="section-title">Ticket Details</h2>
+                    </td>
+                </tr>
+
+                <!-- Header Row -->
+                <tr>
+                    <th>Seat Type</th>
+                    <th class="text-center">Qty</th>
+                    <th class="text-right">Price</th>
+                    <th class="text-right">Subtotal</th>
+                </tr>
+
+                <!-- Seat Rows -->
+                {{SeatDetails}}
+
+                <!-- Fee Rows -->
+                <tr>
+                    <td colspan="3" style="padding: 8px 8px; text-align: right; color: #64748b;">Convenience Fee:</td>
+                    <td style="padding: 8px 8px; text-align: right; color: #64748b;">₹{{ConvenienceFee}}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="padding: 8px 8px; text-align: right; color: #64748b;">GST (18% on Convenience Fee):</td>
+                    <td style="padding: 8px 8px; text-align: right; color: #64748b;">₹{{GSTAmount}}</td>
+                </tr>
+            </table>
+
+            <!-- Total Amount Box -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <tr>
+                    <td class="total-box">
+                        <p class="total-label">Total Amount</p>
+                        <p class="total-amount">₹{{FinalAmount}}</p>
+                        <p class="total-subtext">Inclusive of all taxes & fees</p>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Important Notes -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <tr>
+                    <td class="notes-box">
+                        <p style="margin: 0 0 10px 0; font-weight: 700; color: #1e293b;">📌 Please Note:</p>
+                        <ul style="margin: 0; padding-left: 20px; color: #64748b;">
+                            <li style="margin-bottom: 8px;">Please carry a valid ID proof</li>
+                            <li style="margin-bottom: 8px;">Tickets are non-refundable</li>
+                            <li style="margin-bottom: 8px;">Gate opens 60 minutes before show time</li>
+                            <li style="margin-bottom: 8px;">This ticket is non-transferable</li>
+                        </ul>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p class="footer-logo">TicketHouse</p>
+            <p class="footer-text">Thank you for choosing TicketHouse!</p>
+            <p class="footer-copyright">© {{CurrentYear}} TicketHouse. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -100,5 +100,10 @@ namespace MODEL.Entities
         public DateTime? updated_on { get; set; }
         public string updated_by { get; set; }
         public int active { get; set; } = 1;
+        public decimal booking_amount { get; set; }
+        public decimal convenience_fee { get; set; }
+        public decimal gst_amount { get; set; }
+        public decimal final_amount { get; set; }
+        public string qr_code { get; set; } // New property for QR code
     }
 }

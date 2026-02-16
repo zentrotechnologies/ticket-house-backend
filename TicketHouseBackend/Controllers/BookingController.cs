@@ -910,5 +910,71 @@ namespace TicketHouseBackend.Controllers
 
             return Guid.Empty;
         }
+
+        [HttpGet("diagnose-email-issue")]
+        [AllowAnonymous]
+        public async Task<IActionResult> DiagnoseEmailIssue()
+        {
+            var results = new Dictionary<string, object>();
+
+            try
+            {
+                // Test 1: Check DNS records
+                results["Domain"] = "tickethouse.in";
+
+                // Test 2: Send a very simple text email first
+                var simpleEmailResult = await _emailService.SendEmailAsync(
+                    "kalokhepranjal@gmail.com",
+                    "Simple Test - No HTML, No Attachment",
+                    "This is a plain text test email. If you receive this, the issue is with HTML content or attachments."
+                );
+                results["SimpleTextEmail"] = simpleEmailResult ? "Sent" : "Failed";
+
+                // Test 3: Send email with minimal HTML
+                var minimalHtml = "<html><body><h1>Test</h1><p>Minimal HTML test</p></body></html>";
+                var htmlEmailResult = await _emailService.SendEmailAsync(
+                    "kalokhepranjal@gmail.com",
+                    "Minimal HTML Test",
+                    minimalHtml
+                );
+                results["MinimalHTMLEmail"] = htmlEmailResult ? "Sent" : "Failed";
+
+                // Test 4: Check SPF/DKIM/DMARC (you'll need to implement these checks)
+                results["SPF_Status"] = "Check your DNS: v=spf1 mx ~all";
+                results["DKIM_Status"] = "Configure DKIM in your domain";
+                results["DMARC_Status"] = "Check: _dmarc.tickethouse.in";
+
+                // Test 5: Check if sending IP is blacklisted
+                var ip = await GetPublicIPAsync();
+                results["SendingServerIP"] = ip;
+                results["BlacklistCheck"] = "Check at: https://mxtoolbox.com/blacklists.aspx";
+
+                return Ok(new
+                {
+                    Success = true,
+                    Message = "Diagnosis complete. See results below.",
+                    Results = results,
+                    Recommendations = new[]
+                    {
+                "1. Add SPF record: v=spf1 mx include:tickethouse.in ~all",
+                "2. Set up DKIM signing for tickethouse.in",
+                "3. Add DMARC record: v=DMARC1; p=none; rua=mailto:dmarc@tickethouse.in",
+                "4. Ensure reverse DNS (PTR) matches your sending IP",
+                "5. Warm up your sending IP by sending emails gradually",
+                "6. Check if your IP is on any blacklist"
+            }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Success = false, Error = ex.Message });
+            }
+        }
+
+        private async Task<string> GetPublicIPAsync()
+        {
+            using var client = new HttpClient();
+            return await client.GetStringAsync("https://api.ipify.org");
+        }
     }
 }

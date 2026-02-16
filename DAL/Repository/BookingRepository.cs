@@ -475,25 +475,35 @@ namespace DAL.Repository
             using var connection = _dbConnection.GetConnection();
 
             var query = $@"
-                SELECT 
-                    b.*,
-                    e.event_name,
-                    e.event_date,
-                    e.start_time,
-                    e.end_time,
-                    e.location,
-                    e.banner_image,
-                    u.first_name,
-                    u.last_name,
-                    u.email,
-                    u.mobile
-                FROM {booking} b
-                INNER JOIN {events} e ON b.event_id = e.event_id
-                INNER JOIN {Users} u ON b.user_id = u.user_id
-                WHERE b.booking_id = @BookingId 
-                AND b.active = 1
-                AND e.active = 1
-                AND u.active = 1";
+            SELECT 
+                b.booking_id,
+                b.booking_code,
+                b.user_id,
+                b.event_id,
+                b.total_amount,
+                b.booking_amount,
+                b.convenience_fee,
+                b.gst_amount,
+                b.final_amount,
+                b.status,
+                b.created_on,
+                e.event_name,
+                e.event_date,
+                e.start_time,
+                e.end_time,
+                e.location,
+                e.banner_image,
+                u.first_name,
+                u.last_name,
+                u.email,
+                u.mobile
+            FROM {booking} b
+            INNER JOIN {events} e ON b.event_id = e.event_id
+            INNER JOIN {Users} u ON b.user_id = u.user_id
+            WHERE b.booking_id = @BookingId 
+            AND b.active = 1
+            AND e.active = 1
+            AND u.active = 1";
 
             var bookingDetails = await connection.QueryFirstOrDefaultAsync<BookingDetailsResponse>(query,
                 new { BookingId = bookingId });
@@ -502,15 +512,15 @@ namespace DAL.Repository
             {
                 // Get booking seats
                 var seatsQuery = $@"
-                    SELECT 
-                        bs.*,
-                        esti.seat_name
-                    FROM {booking_seat} bs
-                    INNER JOIN {event_seat_type_inventory} esti 
-                        ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id
-                    WHERE bs.booking_id = @BookingId 
-                    AND bs.active = 1
-                    AND esti.active = 1";
+            SELECT 
+                bs.*,
+                esti.seat_name
+            FROM {booking_seat} bs
+            INNER JOIN {event_seat_type_inventory} esti 
+                ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id
+            WHERE bs.booking_id = @BookingId 
+            AND bs.active = 1
+            AND esti.active = 1";
 
                 var seats = await connection.QueryAsync<BookingSeatResponse>(seatsQuery,
                     new { BookingId = bookingId });
@@ -520,6 +530,57 @@ namespace DAL.Repository
 
             return bookingDetails;
         }
+
+        //public async Task<BookingDetailsResponse> GetBookingDetailsAsync(int bookingId)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+
+        //    var query = $@"
+        //        SELECT 
+        //            b.*,
+        //            e.event_name,
+        //            e.event_date,
+        //            e.start_time,
+        //            e.end_time,
+        //            e.location,
+        //            e.banner_image,
+        //            u.first_name,
+        //            u.last_name,
+        //            u.email,
+        //            u.mobile
+        //        FROM {booking} b
+        //        INNER JOIN {events} e ON b.event_id = e.event_id
+        //        INNER JOIN {Users} u ON b.user_id = u.user_id
+        //        WHERE b.booking_id = @BookingId 
+        //        AND b.active = 1
+        //        AND e.active = 1
+        //        AND u.active = 1";
+
+        //    var bookingDetails = await connection.QueryFirstOrDefaultAsync<BookingDetailsResponse>(query,
+        //        new { BookingId = bookingId });
+
+        //    if (bookingDetails != null)
+        //    {
+        //        // Get booking seats
+        //        var seatsQuery = $@"
+        //            SELECT 
+        //                bs.*,
+        //                esti.seat_name
+        //            FROM {booking_seat} bs
+        //            INNER JOIN {event_seat_type_inventory} esti 
+        //                ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id
+        //            WHERE bs.booking_id = @BookingId 
+        //            AND bs.active = 1
+        //            AND esti.active = 1";
+
+        //        var seats = await connection.QueryAsync<BookingSeatResponse>(seatsQuery,
+        //            new { BookingId = bookingId });
+
+        //        bookingDetails.BookingSeats = seats.ToList();
+        //    }
+
+        //    return bookingDetails;
+        //}
 
         public async Task<BookingDetailsResponse> GetBookingDetailsByCodeAsync(string bookingCode)
         {

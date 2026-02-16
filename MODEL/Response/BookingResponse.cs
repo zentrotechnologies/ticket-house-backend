@@ -50,6 +50,9 @@ namespace MODEL.Response
         public string location { get; set; }
         public string banner_image { get; set; }
         public decimal total_amount { get; set; }
+        public decimal booking_amount { get; set; }  // Add this
+        public decimal convenience_fee { get; set; }  // Add this
+        public decimal gst_amount { get; set; }       // Add this
         public decimal final_amount { get; set; }
         public string status { get; set; }
         public DateTime created_on { get; set; }
