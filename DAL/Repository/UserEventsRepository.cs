@@ -189,19 +189,33 @@ namespace DAL.Repository
             return await connection.QueryAsync<UpcomingEventResponse>(query, parameters);
         }
 
+        //public async Task<decimal?> GetEventPriceInRangeAsync(int eventId)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+
+        //    var query = $@"
+        //        SELECT price 
+        //        FROM {event_seat_type_inventory} 
+        //        WHERE event_id = @EventId 
+        //          AND active = 1 
+        //          AND price BETWEEN 200 AND 1000
+        //          AND available_seats > 0
+        //        ORDER BY created_on DESC, price ASC
+        //        LIMIT 1";
+
+        //    return await connection.QueryFirstOrDefaultAsync<decimal?>(query, new { EventId = eventId });
+        //}
+
         public async Task<decimal?> GetEventPriceInRangeAsync(int eventId)
         {
             using var connection = _dbConnection.GetConnection();
 
             var query = $@"
-                SELECT price 
-                FROM {event_seat_type_inventory} 
-                WHERE event_id = @EventId 
-                  AND active = 1 
-                  AND price BETWEEN 200 AND 1000
-                  AND available_seats > 0
-                ORDER BY created_on DESC, price ASC
-                LIMIT 1";
+            SELECT MIN(price) as price
+            FROM {event_seat_type_inventory} 
+            WHERE event_id = @EventId 
+              AND active = 1 
+              AND available_seats > 0";
 
             return await connection.QueryFirstOrDefaultAsync<decimal?>(query, new { EventId = eventId });
         }
