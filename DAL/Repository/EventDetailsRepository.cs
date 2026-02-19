@@ -189,12 +189,12 @@ namespace DAL.Repository
                 (organizer_id, event_name, event_description, event_date, start_time, end_time,
                  total_duration_minutes, location, full_address, geo_map_url, latitude, longitude,
                  language, event_category_id, banner_image, gallery_media, age_limit, artists,
-                 terms_and_conditions, min_price, max_price, is_featured, status, no_of_seats, created_by, updated_by)
+                 terms_and_conditions, min_price, max_price, is_featured, status, no_of_seats, created_by, updated_by, convenience_fee)
                 VALUES 
                 (@organizer_id, @event_name, @event_description, @event_date, @start_time, @end_time,
                  @total_duration_minutes, @location, @full_address, @geo_map_url, @latitude, @longitude,
                  @language, @event_category_id, @banner_image, @gallery_media::json, @age_limit, @artists::json,
-                 @terms_and_conditions, @min_price, @max_price, @is_featured, @status, @no_of_seats, @created_by, @updated_by)
+                 @terms_and_conditions, @min_price, @max_price, @is_featured, @status, @no_of_seats, @created_by, @updated_by, @convenience_fee)
                 RETURNING event_id";
 
             var eventId = await connection.ExecuteScalarAsync<int>(query, new
@@ -225,7 +225,8 @@ namespace DAL.Repository
                 status = eventDetails.status,
                 no_of_seats = eventDetails.no_of_seats,
                 created_by = eventDetails.created_by,
-                updated_by = eventDetails.updated_by
+                updated_by = eventDetails.updated_by,
+                convenience_fee = eventDetails.convenience_fee ?? 0.00m, // Added this line
             });
 
             return eventId;
@@ -367,7 +368,8 @@ namespace DAL.Repository
                     status = @status,
                     no_of_seats = @no_of_seats,
                     updated_by = @updated_by,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = CURRENT_TIMESTAMP,
+                    convenience_fee = @convenience_fee
                 WHERE event_id = @event_id AND active = 1";
 
             var affectedRows = await connection.ExecuteAsync(query, new
@@ -397,7 +399,8 @@ namespace DAL.Repository
                 is_featured = eventDetails.is_featured,
                 status = eventDetails.status,
                 no_of_seats = eventDetails.no_of_seats,
-                updated_by = eventDetails.updated_by
+                updated_by = eventDetails.updated_by,
+                convenience_fee = eventDetails.convenience_fee ?? 0.00m, // Added this line
             });
 
             return affectedRows;

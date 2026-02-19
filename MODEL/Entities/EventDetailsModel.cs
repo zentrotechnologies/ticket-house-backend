@@ -44,6 +44,7 @@ namespace MODEL.Entities
         public string updated_by { get; set; }
         public DateTime? updated_at { get; set; } = DateTime.UtcNow;
         public int active { get; set; } = 1;
+        public decimal? convenience_fee { get; set; }  // Add this line
     }
 
     public class EventMediaModel
@@ -99,6 +100,7 @@ namespace MODEL.Entities
         public string media_url { get; set; }
         public string media_created_by { get; set; }
         public DateTime media_created_on { get; set; }
+        public decimal? convenience_fee { get; set; } // Add this line
     }
 
     // New models for artist and gallery

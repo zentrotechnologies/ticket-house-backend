@@ -21,12 +21,8 @@ namespace TicketHouseBackend.Controllers.Masters
 
         private string GetCurrentUserId()
         {
+            // Get the user ID from claims instead of username
             return User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
-        }
-
-        private string GetCurrentUserName()
-        {
-            return User.FindFirst(ClaimTypes.Name)?.Value ?? "system";
         }
 
         [HttpGet("GetAllBanners")]
@@ -48,8 +44,8 @@ namespace TicketHouseBackend.Controllers.Masters
         [HttpPost("CreateBanner")]
         public async Task<ActionResult<CommonResponseModel<int>>> CreateBanner([FromBody] CreateBannerRequest request)
         {
-            // Set the current user as creator
-            request.created_by = GetCurrentUserName();
+            // Set the current user ID as creator (not username)
+            request.created_by = GetCurrentUserId();
 
             var response = await _bannerService.CreateBanner(request);
             return Ok(response);
@@ -58,8 +54,8 @@ namespace TicketHouseBackend.Controllers.Masters
         [HttpPost("UpdateBanner/{bannerId}")]
         public async Task<ActionResult<CommonResponseModel<bool>>> UpdateBanner(int bannerId, [FromBody] UpdateBannerRequest request)
         {
-            // Set the current user as updater
-            request.updated_by = GetCurrentUserName();
+            // Set the current user ID as updater (not username)
+            request.updated_by = GetCurrentUserId();
 
             var response = await _bannerService.UpdateBanner(bannerId, request);
             return Ok(response);
@@ -68,7 +64,7 @@ namespace TicketHouseBackend.Controllers.Masters
         [HttpPost("DeleteBanner/{bannerId}")]
         public async Task<ActionResult<CommonResponseModel<bool>>> DeleteBanner(int bannerId)
         {
-            var updatedBy = GetCurrentUserName();
+            var updatedBy = GetCurrentUserId(); // Use user ID instead of username
             var response = await _bannerService.DeleteBanner(bannerId, updatedBy);
             return Ok(response);
         }

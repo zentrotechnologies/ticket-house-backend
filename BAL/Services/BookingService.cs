@@ -259,6 +259,9 @@ namespace BAL.Services
                         seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
                 }
 
+                // Get convenience fee percentage from event (default to 6 if not set)
+                decimal convenienceFeePercentage = eventDetails.convenience_fee ?? 6m;
+
                 // Calculate total amount
                 decimal totalAmount = 0;
                 var bookingSeats = new List<BookingSeatModel>();
@@ -271,7 +274,10 @@ namespace BAL.Services
                 }
 
                 // Calculate fees using helper
-                var fees = FeeCalculator.CalculateFees(totalAmount);
+                //var fees = FeeCalculator.CalculateFees(totalAmount);
+
+                // Calculate fees using dynamic percentage from event
+                var fees = FeeCalculator.CalculateFees(totalAmount, convenienceFeePercentage);
 
                 // Generate booking code
                 var bookingCode = $"ZTH{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";

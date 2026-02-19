@@ -203,12 +203,12 @@ namespace BAL.Services
 
                 // Create Razorpay order using final_amount
                 var options = new Dictionary<string, object>
-        {
-            { "amount", Convert.ToInt32(booking.final_amount * 100) }, // Convert to paise
-            { "currency", booking.currency },
-            { "receipt", $"receipt_{booking.booking_code}" },
-            { "notes", request.Notes ?? new Dictionary<string, string>() }
-        };
+                {
+                    { "amount", Convert.ToInt32(booking.final_amount * 100) }, // Convert to paise
+                    { "currency", booking.currency },
+                    { "receipt", $"receipt_{booking.booking_code}" },
+                    { "notes", request.Notes ?? new Dictionary<string, string>() }
+                };
 
                 var razorpayOrder = _razorpayClient.Order.Create(options);
 
@@ -1251,6 +1251,9 @@ namespace BAL.Services
                     return response;
                 }
 
+                // Get convenience fee percentage from event (default to 6 if not set)
+                decimal convenienceFeePercentage = eventDetails.convenience_fee ?? 6m;
+
                 // Check seat availability (BUT DON'T RESERVE YET)
                 foreach (var seatSelection in request.SeatSelections)
                 {
@@ -1285,7 +1288,10 @@ namespace BAL.Services
                 }
 
                 // Calculate fees
-                var fees = FeeCalculator.CalculateFees(totalAmount);
+                //var fees = FeeCalculator.CalculateFees(totalAmount);
+
+                // Calculate fees using dynamic percentage from event
+                var fees = FeeCalculator.CalculateFees(totalAmount, convenienceFeePercentage);
 
                 // Generate booking code
                 var bookingCode = $"ZTH{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
@@ -1342,12 +1348,13 @@ namespace BAL.Services
                         Amount = fees.finalAmount,
                         Currency = "INR",
                         Notes = new Dictionary<string, string>
-                {
-                    { "eventId", request.EventId.ToString() },
-                    { "eventName", eventDetails.event_name },
-                    { "userId", user.user_id.ToString() },
-                    { "bookingCode", bookingCode }
-                }
+                        {
+                            { "eventId", request.EventId.ToString() },
+                            { "eventName", eventDetails.event_name },
+                            { "userId", user.user_id.ToString() },
+                            { "bookingCode", bookingCode },
+                            { "convenienceFeePercentage", convenienceFeePercentage.ToString() }
+                        }
                     };
 
                     // Call the fixed CreatePaymentOrderAsync method

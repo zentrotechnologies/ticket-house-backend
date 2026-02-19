@@ -247,6 +247,7 @@ namespace MODEL.Response
         public decimal ConvenienceFee { get; set; }
         public decimal GstAmount { get; set; }
         public decimal FinalAmount { get; set; }
+        public string EventName { get; set; }
     }
 
     public class PaymentVerificationResponse
