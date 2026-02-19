@@ -93,16 +93,21 @@ namespace BAL.Services
         {
             try
             {
-                // Process banner image if provided
-                string processedImagePath = null;
-                if (!string.IsNullOrEmpty(request.banner_img))
+                // Validate base64 image if needed
+                if (!string.IsNullOrEmpty(request.banner_img) && !IsValidBase64Url(request.banner_img))
                 {
-                    processedImagePath = await ProcessBannerImage(request.banner_img, "create");
+                    return new CommonResponseModel<int>
+                    {
+                        Status = "Failure",
+                        Success = false,
+                        Message = "Invalid base64 image format",
+                        ErrorCode = "INVALID_BASE64_IMAGE"
+                    };
                 }
 
                 var banner = new BannerManagementModel
                 {
-                    banner_img = processedImagePath, // Use processed image path
+                    banner_img = request.banner_img, // Store base64 directly
                     action_link_url = request.action_link_url,
                     created_by = request.created_by,
                     updated_by = request.created_by
@@ -145,24 +150,22 @@ namespace BAL.Services
                     };
                 }
 
-                // Process banner image if provided
-                string processedImagePath = null;
-                if (!string.IsNullOrEmpty(request.banner_img))
+                // Validate base64 image if provided
+                if (!string.IsNullOrEmpty(request.banner_img) && !IsValidBase64Url(request.banner_img))
                 {
-                    processedImagePath = await ProcessBannerImage(request.banner_img, "update");
-
-                    // Delete old image file if it exists and we're uploading a new one
-                    if (!string.IsNullOrEmpty(existingBanner.banner_img) &&
-                        existingBanner.banner_img.StartsWith("/banner_images/"))
+                    return new CommonResponseModel<bool>
                     {
-                        DeleteOldImageFile(existingBanner.banner_img);
-                    }
+                        Status = "Failure",
+                        Success = false,
+                        Message = "Invalid base64 image format",
+                        ErrorCode = "INVALID_BASE64_IMAGE"
+                    };
                 }
 
                 var banner = new BannerManagementModel
                 {
                     banner_id = bannerId,
-                    banner_img = processedImagePath ?? existingBanner.banner_img, // Keep existing if no new image
+                    banner_img = request.banner_img ?? existingBanner.banner_img, // Keep existing if no new image
                     action_link_url = request.action_link_url ?? existingBanner.action_link_url,
                     updated_by = request.updated_by
                 };
@@ -204,13 +207,6 @@ namespace BAL.Services
                     };
                 }
 
-                // Delete associated image file if it exists
-                if (!string.IsNullOrEmpty(existingBanner.banner_img) &&
-                    existingBanner.banner_img.StartsWith("/banner_images/"))
-                {
-                    DeleteOldImageFile(existingBanner.banner_img);
-                }
-
                 var result = await _bannerRepository.SoftDeleteBanner(bannerId, updatedBy);
                 return new CommonResponseModel<bool>
                 {
@@ -232,58 +228,39 @@ namespace BAL.Services
             }
         }
 
-        // Method to handle image processing - NOW BEING USED
-        private async Task<string> ProcessBannerImage(string bannerImg, string operationType = "create")
+        // Helper method to validate base64 image URL
+        private bool IsValidBase64Url(string base64String)
         {
-            if (string.IsNullOrEmpty(bannerImg))
-                return null;
+            if (string.IsNullOrEmpty(base64String))
+                return false;
 
-            try
+            // Check if it's a valid data URL format
+            if (base64String.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
             {
-                // Check if it's a base64 string or already a file path
-                if (bannerImg.StartsWith("data:image") || bannerImg.StartsWith("/9j/") || ImageHelper.IsValidBase64Image(bannerImg))
+                // Check if it contains base64 data
+                var base64Data = base64String.Substring(base64String.IndexOf(",") + 1);
+                try
                 {
-                    // It's a base64 image, save as file
-                    var fileName = $"banner_{DateTime.Now:yyyyMMddHHmmss}";
-                    return await ImageHelper.SaveImageAsFile(bannerImg, fileName);
+                    Convert.FromBase64String(base64Data);
+                    return true;
                 }
-                else if (bannerImg.StartsWith("/banner_images/"))
+                catch
                 {
-                    // It's already a file path, return as is
-                    return bannerImg;
-                }
-                else
-                {
-                    // It might be a URL or other format, store as is
-                    return bannerImg;
+                    return false;
                 }
             }
-            catch (Exception ex)
+            // Check if it's plain base64
+            else
             {
-                throw new Exception($"Error processing banner image: {ex.Message}");
-            }
-        }
-
-        // Method to delete old image files
-        private void DeleteOldImageFile(string imagePath)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(imagePath) || !imagePath.StartsWith("/banner_images/"))
-                    return;
-
-                var fileName = imagePath.Substring("/banner_images/".Length);
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "banner_images", fileName);
-
-                if (File.Exists(filePath))
+                try
                 {
-                    File.Delete(filePath);
+                    Convert.FromBase64String(base64String);
+                    return true;
                 }
-            }
-            catch (Exception ex)
-            {
-                // Log the error but don't throw - we don't want image deletion failure to stop the main operation
-                Console.WriteLine($"Warning: Could not delete old image file: {ex.Message}");
+                catch
+                {
+                    return false;
+                }
             }
         }
     }
