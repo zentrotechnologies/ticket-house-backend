@@ -126,5 +126,13 @@ namespace TicketHouseBackend.Controllers
             };
             Response.Cookies.Append(key, token, cookieOptions);
         }
+
+        [AllowAnonymous]
+        [HttpPost("ResetPassword")]
+        public async Task<ActionResult<CommonResponseModel<string>>> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            var response = await _userService.ResetPassword(request);
+            return Ok(response);
+        }
     }
 }

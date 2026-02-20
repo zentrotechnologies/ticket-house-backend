@@ -31,18 +31,21 @@ namespace BAL.Services
         Task<CommonResponseModel<OrganizerResponse>> GetOrganizerById(Guid organizerId);
         // Add new method for combined update
         Task<CommonResponseModel<OrganizerResponse>> UpdateOrganizerWithUserDetails(OrganizerRequest request, Guid organizerId);
+        Task<CommonResponseModel<string>> ResetPassword(ResetPasswordRequest request);
     }
     public class UserService: IUserService
     {
         private readonly IUserRepository _userRepository;
+        private readonly ILoginRepository _loginRepository;
         private readonly IEncryptionDecryption _encryption;
         private readonly THConfiguration _configuration;
 
-        public UserService(IUserRepository userRepository, IEncryptionDecryption encryption, THConfiguration configuration)
+        public UserService(IUserRepository userRepository, IEncryptionDecryption encryption, THConfiguration configuration, ILoginRepository loginRepository)
         {
             _userRepository = userRepository;
             _encryption = encryption;
             _configuration = configuration;
+            _loginRepository = loginRepository;
         }
 
         public async Task<LoginResponse> RegisterUser(SignUpRequest signUpRequest)
@@ -816,6 +819,80 @@ namespace BAL.Services
                 response.Success = false;
                 response.Message = $"Failed to update organizer: {ex.Message}";
                 response.ErrorCode = "1";
+                return response;
+            }
+        }
+
+        // In UserService.ResetPassword method
+        public async Task<CommonResponseModel<string>> ResetPassword(ResetPasswordRequest request)
+        {
+            var response = new CommonResponseModel<string>();
+
+            try
+            {
+                // Validate request
+                if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.NewPassword))
+                {
+                    response.Status = "Failure";
+                    response.Message = "Email and new password are required";
+                    response.ErrorCode = "INVALID_REQUEST";
+                    return response;
+                }
+
+                // Check if OTP was verified (within last 10 minutes)
+                var verifiedOtp = await _loginRepository.GetValidOtpByEmail(request.Email);
+                if (verifiedOtp == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "OTP verification required or expired. Please request a new OTP.";
+                    response.ErrorCode = "OTP_NOT_VERIFIED";
+                    return response;
+                }
+
+                // Get user by email
+                var user = await _userRepository.GetUserByEmail(request.Email);
+                if (user == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "User not found";
+                    response.ErrorCode = "USER_NOT_FOUND";
+                    return response;
+                }
+
+                // Encrypt new password
+                var encryptedPassword = await _encryption.Encryption(request.NewPassword);
+
+                // Update password in database
+                var isUpdated = await _userRepository.UpdateUserPasswordOnly(
+                    user.user_id,
+                    encryptedPassword,
+                    user.user_id.ToString()
+                );
+
+                if (!isUpdated)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Failed to update password";
+                    response.ErrorCode = "UPDATE_FAILED";
+                    return response;
+                }
+
+                // FIX: Use 'expired' instead of 'used' (since 'used' is not allowed)
+                await _loginRepository.UpdateOtpStatus(verifiedOtp.otp_id, "expired");
+
+                // OR if you want to keep track of used OTPs, you could use 'verified' 
+                // but that would be misleading. 'expired' is the best choice.
+
+                response.Status = "Success";
+                response.Message = "Password updated successfully";
+                response.ErrorCode = "0";
+                return response;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Failed to reset password: {ex.Message}";
+                response.ErrorCode = "RESET_PASSWORD_ERROR";
                 return response;
             }
         }

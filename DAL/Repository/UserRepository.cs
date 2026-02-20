@@ -33,6 +33,7 @@ namespace DAL.Repository
         Task<bool> UpdateOrganizerStatus(Guid organizerId, int status, string updatedBy);
         // New method for combined update
         Task<bool> UpdateUserAndOrganizer(UserModel user, EventOrganizerModel organizer);
+        Task<bool> UpdateUserPasswordOnly(Guid userId, string encryptedPassword, string updatedBy);
     }
     public class UserRepository: IUserRepository
     {
@@ -672,6 +673,24 @@ namespace DAL.Repository
                 transaction.Rollback();
                 throw;
             }
+        }
+
+        public async Task<bool> UpdateUserPasswordOnly(Guid userId, string encryptedPassword, string updatedBy)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            UPDATE {DatabaseConfiguration.Users} 
+            SET password = @Password, updated_by = @UpdatedBy, updated_on = CURRENT_TIMESTAMP
+            WHERE user_id = @UserId AND active = 1";
+
+            var affectedRows = await connection.ExecuteAsync(query, new
+            {
+                UserId = userId,
+                Password = encryptedPassword,
+                UpdatedBy = updatedBy
+            });
+
+            return affectedRows > 0;
         }
     }
 }

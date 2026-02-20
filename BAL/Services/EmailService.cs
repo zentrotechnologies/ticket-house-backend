@@ -16,6 +16,7 @@ namespace BAL.Services
         Task<bool> SendEmailWithAttachmentAsync(string toEmail, string subject, string body, byte[] attachment, string attachmentFileName);
         Task<bool> SendOTPEmailAsync(string toEmail, string otp, string userName = "");
         Task<bool> TestSmtpConnectionAsync();
+        Task<bool> SendForgotPasswordOTPEmailAsync(string email, string otp, string userName);
     }
     public class EmailService: IEmailService
     {
@@ -758,6 +759,58 @@ namespace BAL.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "SMTP Connection Test Failed");
+                return false;
+            }
+        }
+
+        // Add to your EmailService class
+        public async Task<bool> SendForgotPasswordOTPEmailAsync(string email, string otp, string userName)
+        {
+            try
+            {
+                var subject = "Password Reset OTP - TicketHouse";
+
+                var body = $@"
+                <html>
+                <head>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                        .header {{ background: linear-gradient(135deg, #9234ea 0%, #e236a3 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }}
+                        .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                        .otp-code {{ font-size: 36px; font-weight: bold; color: #9234ea; text-align: center; padding: 20px; background: white; border-radius: 10px; margin: 20px 0; }}
+                        .footer {{ text-align: center; margin-top: 30px; font-size: 12px; color: #999; }}
+                    </style>
+                </head>
+                <body>
+                    <div class='container'>
+                        <div class='header'>
+                            <h2>Password Reset Request</h2>
+                        </div>
+                        <div class='content'>
+                            <p>Hello {userName},</p>
+                            <p>We received a request to reset your password for your TicketHouse account. Use the following OTP to proceed:</p>
+                    
+                            <div class='otp-code'>{otp}</div>
+                    
+                            <p>This OTP will expire in <strong>2 minutes</strong>.</p>
+                    
+                            <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
+                    
+                            <p>Best regards,<br>The TicketHouse Team</p>
+                        </div>
+                        <div class='footer'>
+                            <p>This is an automated message, please do not reply to this email.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>";
+
+                return await SendEmailAsync(email, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send forgot password OTP email: {ex.Message}");
                 return false;
             }
         }

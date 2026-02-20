@@ -36,4 +36,11 @@ namespace MODEL.Response
     {
         public int new_otp_id { get; set; }
     }
+
+    public class ResetPasswordRequest
+    {
+        public string Email { get; set; }
+        public string NewPassword { get; set; }
+        public int OtpId { get; set; }
+    }
 }

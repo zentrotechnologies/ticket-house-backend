@@ -19,6 +19,9 @@ namespace DAL.Repository
         Task<bool> VerifyOtp(int otpId);
         Task<bool> UpdateOtpStatus(int otpId, string status);
         Task<OtpVerificationModel> GetLatestOtpByEmail(string email, string type = "email");
+        Task<UserModel> GetUserByEmailForReset(string email);
+        Task<bool> UpdateUserPassword(Guid userId, string encryptedPassword);
+        Task<OtpVerificationModel> GetValidOtpByEmail(string email, string type = "email");
     }
     public class LoginRepository: ILoginRepository
     {
@@ -144,6 +147,48 @@ namespace DAL.Repository
 
             var affectedRows = await connection.ExecuteAsync(query, new { OtpId = otpId, Status = status });
             return affectedRows > 0;
+        }
+
+        public async Task<UserModel> GetUserByEmailForReset(string email)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            SELECT * FROM {DatabaseConfiguration.Users} 
+            WHERE email = @Email AND active = 1 
+            LIMIT 1";
+
+            return await connection.QueryFirstOrDefaultAsync<UserModel>(query, new { Email = email });
+        }
+
+        public async Task<bool> UpdateUserPassword(Guid userId, string encryptedPassword)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            UPDATE {DatabaseConfiguration.Users} 
+            SET password = @Password, updated_on = CURRENT_TIMESTAMP
+            WHERE user_id = @UserId AND active = 1";
+
+            var affectedRows = await connection.ExecuteAsync(query, new
+            {
+                UserId = userId,
+                Password = encryptedPassword
+            });
+
+            return affectedRows > 0;
+        }
+
+        public async Task<OtpVerificationModel> GetValidOtpByEmail(string email, string type = "email")
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            SELECT * FROM {DatabaseConfiguration.OtpVerification} 
+            WHERE email = @Email AND type = @Type AND status = 'verified' AND active = 1
+            AND created_on >= NOW() - INTERVAL '10 minutes'
+            ORDER BY created_on DESC 
+            LIMIT 1";
+
+            return await connection.QueryFirstOrDefaultAsync<OtpVerificationModel>(
+                query, new { Email = email, Type = type });
         }
     }
 }

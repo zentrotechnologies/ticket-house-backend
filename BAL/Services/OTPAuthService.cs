@@ -16,6 +16,7 @@ namespace BAL.Services
         Task<OTPResponse> GenerateOTP(GenerateOTPRequest request);
         Task<CommonResponseModel<string>> VerifyOTP(VerifyOTPRequest request);
         Task<ResendOTPResponse> ResendOTP(int otpId);
+        Task<bool> ValidateUserForForgotPassword(string email);
     }
     public class OTPAuthService: IOTPAuthService
     {
@@ -32,6 +33,93 @@ namespace BAL.Services
             _logger = logger;
         }
 
+        //public async Task<OTPResponse> GenerateOTP(GenerateOTPRequest request)
+        //{
+        //    var response = new OTPResponse();
+
+        //    try
+        //    {
+        //        // Validate request
+        //        if (string.IsNullOrEmpty(request.email) && string.IsNullOrEmpty(request.mobile))
+        //        {
+        //            response.Response.Status = "Failure";
+        //            response.Response.Message = "Email or mobile is required";
+        //            response.Response.ErrorCode = "CONTACT_REQUIRED";
+        //            return response;
+        //        }
+
+        //        if (string.IsNullOrEmpty(request.contact_type))
+        //        {
+        //            response.Response.Status = "Failure";
+        //            response.Response.Message = "Contact type (email/mobile) is required";
+        //            response.Response.ErrorCode = "CONTACT_TYPE_REQUIRED";
+        //            return response;
+        //        }
+
+        //        // Generate random 4-digit OTP
+        //        var random = new Random();
+        //        var otp = random.Next(1000, 9999).ToString();
+
+        //        var otpVerification = new OtpVerificationModel
+        //        {
+        //            email = request.email,
+        //            mobile = request.mobile,
+        //            country_code = request.country_code,
+        //            type = request.contact_type.ToLower(),
+        //            otp = otp,
+        //            status = "not verified",
+        //            created_by = "system",
+        //            updated_by = "system"
+        //        };
+
+        //        // If not a new user, get user_id
+        //        if (!request.newUser && !string.IsNullOrEmpty(request.email))
+        //        {
+        //            var user = await _userRepository.GetUserByEmail(request.email);
+        //            if (user != null)
+        //            {
+        //                _logger.LogInformation($"Found existing user: {user.user_id} for email: {request.email}");
+        //                otpVerification.user_id = user.user_id;
+        //            }
+        //        }
+
+        //        var otpId = await _loginRepository.AddOtpVerification(otpVerification);
+        //        _logger.LogInformation($"OTP saved to database with ID: {otpId}");
+
+        //        // Send OTP via email if email is provided and type is email
+        //        if (!string.IsNullOrEmpty(request.email) && request.contact_type.ToLower() == "email")
+        //        {
+        //            var user = await _userRepository.GetUserByEmail(request.email);
+        //            var userName = user?.first_name ?? "User";
+
+        //            _logger.LogInformation($"Attempting to send OTP email to: {request.email}");
+
+        //            var emailSent = await _emailService.SendOTPEmailAsync(request.email, otp, userName);
+
+        //            if (!emailSent)
+        //            {
+        //                // Don't fail the request if email fails, just log it
+        //                Console.WriteLine($"Warning: Failed to send OTP email to {request.email}");
+        //                _logger.LogError($"Failed to send OTP email to {request.email}");
+        //            }
+        //        }
+
+        //        response.Response.Status = "Success";
+        //        response.Response.Message = $"OTP sent successfully to {request.contact_type}";
+        //        response.validationotp_id = otpId;
+
+        //        return response;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        response.Response.Status = "Failure";
+        //        response.Response.Message = $"Failed to generate OTP: {ex.Message}";
+        //        response.Response.ErrorCode = "OTP_GENERATION_ERROR";
+        //        return response;
+        //    }
+        //}
+
+        // Update the GenerateOTP method in OTPAuthService
         public async Task<OTPResponse> GenerateOTP(GenerateOTPRequest request)
         {
             var response = new OTPResponse();
@@ -55,6 +143,19 @@ namespace BAL.Services
                     return response;
                 }
 
+                // For forgot password (newUser = false), validate that user exists
+                if (!request.newUser && !string.IsNullOrEmpty(request.email))
+                {
+                    var userExists = await ValidateUserForForgotPassword(request.email);
+                    if (!userExists)
+                    {
+                        response.Response.Status = "Failure";
+                        response.Response.Message = "No account found with this email address";
+                        response.Response.ErrorCode = "USER_NOT_FOUND";
+                        return response;
+                    }
+                }
+
                 // Generate random 4-digit OTP
                 var random = new Random();
                 var otp = random.Next(1000, 9999).ToString();
@@ -71,13 +172,12 @@ namespace BAL.Services
                     updated_by = "system"
                 };
 
-                // If not a new user, get user_id
-                if (!request.newUser && !string.IsNullOrEmpty(request.email))
+                // Get user_id if exists
+                if (!string.IsNullOrEmpty(request.email))
                 {
                     var user = await _userRepository.GetUserByEmail(request.email);
                     if (user != null)
                     {
-                        _logger.LogInformation($"Found existing user: {user.user_id} for email: {request.email}");
                         otpVerification.user_id = user.user_id;
                     }
                 }
@@ -91,20 +191,24 @@ namespace BAL.Services
                     var user = await _userRepository.GetUserByEmail(request.email);
                     var userName = user?.first_name ?? "User";
 
-                    _logger.LogInformation($"Attempting to send OTP email to: {request.email}");
-
-                    var emailSent = await _emailService.SendOTPEmailAsync(request.email, otp, userName);
+                    // Different email template for forgot password
+                    var emailSent = await _emailService.SendForgotPasswordOTPEmailAsync(
+                        request.email,
+                        otp,
+                        userName
+                    );
 
                     if (!emailSent)
                     {
-                        // Don't fail the request if email fails, just log it
                         Console.WriteLine($"Warning: Failed to send OTP email to {request.email}");
                         _logger.LogError($"Failed to send OTP email to {request.email}");
                     }
                 }
 
                 response.Response.Status = "Success";
-                response.Response.Message = $"OTP sent successfully to {request.contact_type}";
+                response.Response.Message = request.newUser
+                    ? $"OTP sent successfully to {request.contact_type}"
+                    : $"Password reset OTP sent to your email";
                 response.validationotp_id = otpId;
 
                 return response;
@@ -228,6 +332,23 @@ namespace BAL.Services
                 response.Response.Message = $"Failed to resend OTP: {ex.Message}";
                 response.Response.ErrorCode = "OTP_RESEND_ERROR";
                 return response;
+            }
+        }
+
+        public async Task<bool> ValidateUserForForgotPassword(string email)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(email))
+                    return false;
+
+                var user = await _userRepository.GetUserByEmail(email);
+                return user != null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error validating user for forgot password: {ex.Message}");
+                return false;
             }
         }
     }
