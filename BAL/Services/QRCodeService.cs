@@ -2,8 +2,7 @@
 using QRCoder;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,21 +15,20 @@ namespace BAL.Services
         string GenerateQRCodeBase64(string data);
         Task<string> GenerateBookingQRCodeAsync(int bookingId, BookingDetailsResponse bookingDetails);
     }
-    public class QRCodeService: IQRCodeService
+
+    public class QRCodeService : IQRCodeService
     {
         public byte[] GenerateQRCode(string data)
         {
-            using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
-            using (QRCodeData qrCodeData = qrGenerator.CreateQrCode(data, QRCodeGenerator.ECCLevel.Q))
-            using (QRCode qrCode = new QRCode(qrCodeData))
-            {
-                Bitmap qrCodeImage = qrCode.GetGraphic(20);
-                using (MemoryStream stream = new MemoryStream())
-                {
-                    qrCodeImage.Save(stream, ImageFormat.Png);
-                    return stream.ToArray();
-                }
-            }
+            using var qrGenerator = new QRCodeGenerator();
+            using var qrCodeData = qrGenerator.CreateQrCode(data, QRCodeGenerator.ECCLevel.Q);
+
+            // ✅ THIS is Linux safe
+            var pngQrCode = new PngByteQRCode(qrCodeData);
+
+            byte[] qrCodeBytes = pngQrCode.GetGraphic(20);
+
+            return qrCodeBytes;
         }
 
         public string GenerateQRCodeBase64(string data)
@@ -43,7 +41,6 @@ namespace BAL.Services
         {
             try
             {
-                // Create structured data for QR code
                 var qrData = new
                 {
                     BookingId = bookingId,
@@ -55,7 +52,7 @@ namespace BAL.Services
                     CustomerName = $"{bookingDetails.first_name} {bookingDetails.last_name}",
                     CustomerEmail = bookingDetails.email,
                     TotalAmount = bookingDetails.total_amount,
-                    FinalAmount = bookingDetails.final_amount, // ADD THIS LINE
+                    FinalAmount = bookingDetails.final_amount,
                     Status = bookingDetails.status,
                     BookingDate = bookingDetails.created_on.ToString("yyyy-MM-dd HH:mm:ss"),
                     Seats = bookingDetails.BookingSeats.Select(bs => new
@@ -68,6 +65,7 @@ namespace BAL.Services
                 };
 
                 string jsonData = Newtonsoft.Json.JsonConvert.SerializeObject(qrData);
+
                 return GenerateQRCodeBase64(jsonData);
             }
             catch (Exception ex)
