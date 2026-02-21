@@ -37,6 +37,7 @@ namespace MODEL.Entities
         public decimal gst_amount { get; set; } // 18% on convenience fee
         public decimal final_amount { get; set; } // Total for Razorpay
         //public string currency { get; set; } = "INR";
+        public string? qr_code { get; set; }
     }
 
     public class BookingSeatModel

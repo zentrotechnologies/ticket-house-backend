@@ -35,6 +35,67 @@ namespace DAL.Repository
             _configuration = configuration;
         }
 
+        //public async Task<IEnumerable<UpcomingEventResponse>> GetUpcomingEventsAsync(UpcomingEventsRequest request)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+
+        //    // Calculate date range for "coming this week"
+        //    var today = DateTime.Today;
+        //    var weekEnd = today.AddDays(7);
+
+        //    var query = $@"
+        //        WITH UpcomingEvents AS (
+        //            SELECT 
+        //                event_id,
+        //                event_name,
+        //                event_date,
+        //                TO_CHAR(start_time, 'HH12:MI AM') as start_time,
+        //                TO_CHAR(end_time, 'HH12:MI AM') as end_time,
+        //                location,
+        //                banner_image,
+        //                TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
+        //            FROM {events}
+        //            WHERE active = 1 
+        //            AND event_date >= @Today
+        //            AND event_date <= @WeekEnd
+        //            ORDER BY event_date ASC, start_time ASC
+        //            LIMIT @Count
+        //        ),
+        //        LaterEvents AS (
+        //            SELECT 
+        //                event_id,
+        //                event_name,
+        //                event_date,
+        //                TO_CHAR(start_time, 'HH12:MI AM') as start_time,
+        //                TO_CHAR(end_time, 'HH12:MI AM') as end_time,
+        //                location,
+        //                banner_image,
+        //                TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
+        //            FROM {events}
+        //            WHERE active = 1 
+        //            AND event_date > @WeekEnd
+        //            ORDER BY event_date ASC, start_time ASC
+        //            LIMIT CASE WHEN @IncludeLaterEvents = true 
+        //                      THEN GREATEST(0, @Count - (SELECT COUNT(*) FROM UpcomingEvents)) 
+        //                      ELSE 0 END
+        //        )
+        //        SELECT * FROM UpcomingEvents
+        //        UNION ALL
+        //        SELECT * FROM LaterEvents
+        //        ORDER BY event_date ASC, start_time ASC
+        //        LIMIT @Count";
+
+        //    var parameters = new
+        //    {
+        //        Today = today,
+        //        WeekEnd = weekEnd,
+        //        Count = request.Count,
+        //        IncludeLaterEvents = request.IncludeLaterEvents
+        //    };
+
+        //    return await connection.QueryAsync<UpcomingEventResponse>(query, parameters);
+        //}
+
         public async Task<IEnumerable<UpcomingEventResponse>> GetUpcomingEventsAsync(UpcomingEventsRequest request)
         {
             using var connection = _dbConnection.GetConnection();
@@ -44,46 +105,54 @@ namespace DAL.Repository
             var weekEnd = today.AddDays(7);
 
             var query = $@"
-                WITH UpcomingEvents AS (
-                    SELECT 
-                        event_id,
-                        event_name,
-                        event_date,
-                        TO_CHAR(start_time, 'HH12:MI AM') as start_time,
-                        TO_CHAR(end_time, 'HH12:MI AM') as end_time,
-                        location,
-                        banner_image,
-                        TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
-                    FROM {events}
-                    WHERE active = 1 
-                    AND event_date >= @Today
-                    AND event_date <= @WeekEnd
-                    ORDER BY event_date ASC, start_time ASC
-                    LIMIT @Count
-                ),
-                LaterEvents AS (
-                    SELECT 
-                        event_id,
-                        event_name,
-                        event_date,
-                        TO_CHAR(start_time, 'HH12:MI AM') as start_time,
-                        TO_CHAR(end_time, 'HH12:MI AM') as end_time,
-                        location,
-                        banner_image,
-                        TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
-                    FROM {events}
-                    WHERE active = 1 
-                    AND event_date > @WeekEnd
-                    ORDER BY event_date ASC, start_time ASC
-                    LIMIT CASE WHEN @IncludeLaterEvents = true 
-                              THEN GREATEST(0, @Count - (SELECT COUNT(*) FROM UpcomingEvents)) 
-                              ELSE 0 END
-                )
-                SELECT * FROM UpcomingEvents
-                UNION ALL
-                SELECT * FROM LaterEvents
+            WITH UpcomingEvents AS (
+                SELECT 
+                    event_id,
+                    event_name,
+                    event_date,
+                    TO_CHAR(start_time, 'HH12:MI AM') as start_time,
+                    TO_CHAR(end_time, 'HH12:MI AM') as end_time,
+                    location,
+                    full_address,
+                    geo_map_url,
+                    latitude,
+                    longitude,
+                    banner_image,
+                    TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
+                FROM {events}
+                WHERE active = 1 
+                AND event_date >= @Today
+                AND event_date <= @WeekEnd
                 ORDER BY event_date ASC, start_time ASC
-                LIMIT @Count";
+                LIMIT @Count
+            ),
+            LaterEvents AS (
+                SELECT 
+                    event_id,
+                    event_name,
+                    event_date,
+                    TO_CHAR(start_time, 'HH12:MI AM') as start_time,
+                    TO_CHAR(end_time, 'HH12:MI AM') as end_time,
+                    location,
+                    full_address,
+                    geo_map_url,
+                    latitude,
+                    longitude,
+                    banner_image,
+                    TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
+                FROM {events}
+                WHERE active = 1 
+                AND event_date > @WeekEnd
+                ORDER BY event_date ASC, start_time ASC
+                LIMIT CASE WHEN @IncludeLaterEvents = true 
+                          THEN GREATEST(0, @Count - (SELECT COUNT(*) FROM UpcomingEvents)) 
+                          ELSE 0 END
+            )
+            SELECT * FROM UpcomingEvents
+            UNION ALL
+            SELECT * FROM LaterEvents
+            ORDER BY event_date ASC, start_time ASC
+            LIMIT @Count";
 
             var parameters = new
             {
@@ -157,27 +226,63 @@ namespace DAL.Repository
             return await connection.QueryFirstOrDefaultAsync<EventDetailsModel>(query, new { EventId = eventId });
         }
 
+        //public async Task<IEnumerable<UpcomingEventResponse>> GetSimilarEventsByCategoryAsync(int categoryId, int excludeEventId, int count)
+        //{
+        //    using var connection = _dbConnection.GetConnection();
+
+        //    var query = $@"
+        //        SELECT 
+        //            event_id,
+        //            event_name,
+        //            event_date,
+        //            TO_CHAR(start_time, 'HH12:MI AM') as start_time,
+        //            TO_CHAR(end_time, 'HH12:MI AM') as end_time,
+        //            location,
+        //            banner_image,
+        //            TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
+        //        FROM {events}
+        //        WHERE active = 1 
+        //        AND event_date >= CURRENT_DATE
+        //        AND event_category_id = @CategoryId
+        //        AND event_id != @ExcludeEventId
+        //        ORDER BY event_date ASC, start_time ASC
+        //        LIMIT @Count";
+
+        //    var parameters = new
+        //    {
+        //        CategoryId = categoryId,
+        //        ExcludeEventId = excludeEventId,
+        //        Count = count
+        //    };
+
+        //    return await connection.QueryAsync<UpcomingEventResponse>(query, parameters);
+        //}
+
         public async Task<IEnumerable<UpcomingEventResponse>> GetSimilarEventsByCategoryAsync(int categoryId, int excludeEventId, int count)
         {
             using var connection = _dbConnection.GetConnection();
 
             var query = $@"
-                SELECT 
-                    event_id,
-                    event_name,
-                    event_date,
-                    TO_CHAR(start_time, 'HH12:MI AM') as start_time,
-                    TO_CHAR(end_time, 'HH12:MI AM') as end_time,
-                    location,
-                    banner_image,
-                    TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
-                FROM {events}
-                WHERE active = 1 
-                AND event_date >= CURRENT_DATE
-                AND event_category_id = @CategoryId
-                AND event_id != @ExcludeEventId
-                ORDER BY event_date ASC, start_time ASC
-                LIMIT @Count";
+            SELECT 
+                event_id,
+                event_name,
+                event_date,
+                TO_CHAR(start_time, 'HH12:MI AM') as start_time,
+                TO_CHAR(end_time, 'HH12:MI AM') as end_time,
+                location,
+                full_address,
+                geo_map_url,
+                latitude,
+                longitude,
+                banner_image,
+                TO_CHAR(event_date, 'Dy, DD Mon YYYY') as formatted_date
+            FROM {events}
+            WHERE active = 1 
+            AND event_date >= CURRENT_DATE
+            AND event_category_id = @CategoryId
+            AND event_id != @ExcludeEventId
+            ORDER BY event_date ASC, start_time ASC
+            LIMIT @Count";
 
             var parameters = new
             {

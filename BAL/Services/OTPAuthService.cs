@@ -191,17 +191,27 @@ namespace BAL.Services
                     var user = await _userRepository.GetUserByEmail(request.email);
                     var userName = user?.first_name ?? "User";
 
-                    // Different email template for forgot password
-                    var emailSent = await _emailService.SendForgotPasswordOTPEmailAsync(
-                        request.email,
-                        otp,
-                        userName
-                    );
+                    bool emailSent;
+
+                    // CRITICAL FIX: Use different templates based on flow
+                    if (request.newUser)
+                    {
+                        // SIGNUP FLOW - Use normal OTP template
+                        _logger.LogInformation($"Sending SIGNUP OTP email to: {request.email} using SendOTPEmailAsync");
+                        emailSent = await _emailService.SendOTPEmailAsync(request.email, otp, userName);
+                    }
+                    else
+                    {
+                        // FORGOT PASSWORD FLOW - Use forgot password template
+                        _logger.LogInformation($"Sending FORGOT PASSWORD OTP email to: {request.email} using SendForgotPasswordOTPEmailAsync");
+                        emailSent = await _emailService.SendForgotPasswordOTPEmailAsync(request.email, otp, userName);
+                    }
 
                     if (!emailSent)
                     {
+                        _logger.LogError($"Failed to send OTP email to {request.email} for flow: {(request.newUser ? "Signup" : "Forgot Password")}");
+                        // Don't fail the request if email fails, but log it
                         Console.WriteLine($"Warning: Failed to send OTP email to {request.email}");
-                        _logger.LogError($"Failed to send OTP email to {request.email}");
                     }
                 }
 

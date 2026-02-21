@@ -51,6 +51,7 @@ namespace DAL.Repository
         Task<BookingDetailedResponse> GetBookingDetailsByIdAsync(int bookingId);
         Task<EventSummaryResponse> GetEventSummaryByEventIdAsync(int eventId);
         Task<PagedBookingHistoryResponse> GetPagedBookingHistoryByUserIdAsync(BookingHistoryRequest request);
+        Task<int> UpdateBookingQRCodeAsync(int bookingId, string qrCodeBase64, string updatedBy);
     }
     public class BookingRepository: IBookingRepository
     {
@@ -487,6 +488,7 @@ namespace DAL.Repository
                 b.final_amount,
                 b.status,
                 b.created_on,
+                b.qr_code,
                 e.event_name,
                 e.event_date,
                 e.start_time,
@@ -1814,6 +1816,7 @@ namespace DAL.Repository
             SELECT 
                 b.booking_id,
                 b.booking_code,
+                b.qr_code,
                 e.event_name,
                 e.event_date,
                 e.start_time,
@@ -1896,6 +1899,24 @@ namespace DAL.Repository
                 CurrentPage = request.PageNumber,
                 PageSize = request.PageSize
             };
+        }
+
+        public async Task<int> UpdateBookingQRCodeAsync(int bookingId, string qrCodeBase64, string updatedBy)
+        {
+            using var connection = _dbConnection.GetConnection();
+            var query = $@"
+            UPDATE {booking} 
+            SET qr_code = @qr_code,
+                updated_by = @updated_by,
+                updated_on = CURRENT_TIMESTAMP
+            WHERE booking_id = @booking_id AND active = 1";
+
+            return await connection.ExecuteAsync(query, new
+            {
+                booking_id = bookingId,
+                qr_code = qrCodeBase64,
+                updated_by = updatedBy
+            });
         }
     }
 }

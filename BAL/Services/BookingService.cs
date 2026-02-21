@@ -739,6 +739,113 @@ namespace BAL.Services
         }
 
         // Add this new method for confirming booking with QR code
+        ////-----correct before qr save
+        //public async Task<CommonResponseModel<BookingQRResponse>> ConfirmBookingWithQRAsync(int bookingId, string userEmail)
+        //{
+        //    var response = new CommonResponseModel<BookingQRResponse>();
+
+        //    try
+        //    {
+        //        if (bookingId <= 0)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "Valid booking ID is required";
+        //            response.ErrorCode = "400";
+        //            return response;
+        //        }
+
+        //        var booking = await _bookingRepository.GetBookingByIdAsync(bookingId);
+        //        if (booking == null)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "Booking not found";
+        //            response.ErrorCode = "404";
+        //            return response;
+        //        }
+
+        //        // Get booking details
+        //        var bookingDetails = await _bookingRepository.GetBookingDetailsAsync(bookingId);
+        //        if (bookingDetails == null)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "Booking details not found";
+        //            response.ErrorCode = "404";
+        //            return response;
+        //        }
+
+        //        var seatUpdates = new List<SeatUpdateRequest>();
+        //        foreach (var seat in bookingDetails.BookingSeats)
+        //        {
+        //            seatUpdates.Add(new SeatUpdateRequest
+        //            {
+        //                SeatTypeId = seat.event_seat_type_inventory_id,
+        //                Quantity = seat.quantity
+        //            });
+        //        }
+
+        //        // Update booking status and reduce seat availability
+        //        var affectedRows = await _bookingRepository.UpdateBookingStatusAndSeatsAsync(
+        //            bookingId, "confirmed", seatUpdates, userEmail);
+
+        //        if (affectedRows > 0)
+        //        {
+        //            // Get updated booking details
+        //            var updatedBookingDetails = await _bookingRepository.GetBookingDetailsAsync(bookingId);
+
+        //            // Generate QR code
+        //            string qrCodeBase64 = await _qrCodeService.GenerateBookingQRCodeAsync(bookingId, updatedBookingDetails);
+
+        //            // Get event details
+        //            var eventDetails = await _eventDetailsRepository.GetEventByIdAsync(updatedBookingDetails.event_id);
+
+        //            // Prepare thank you message
+        //            string thankYouMessage = $"Thank you for booking {updatedBookingDetails.event_name}!\n\n" +
+        //                                   $"Your booking #{updatedBookingDetails.booking_code} has been confirmed.\n" +
+        //                                   $"Date: {updatedBookingDetails.event_date:dd MMM yyyy}\n" +
+        //                                   $"Time: {updatedBookingDetails.start_time} - {updatedBookingDetails.end_time}\n" +
+        //                                   $"Venue: {updatedBookingDetails.location}\n\n" +
+        //                                   $"Please present this QR code at the venue entry.";
+
+        //            var qrResponse = new BookingQRResponse
+        //            {
+        //                BookingId = bookingId,
+        //                BookingCode = updatedBookingDetails.booking_code,
+        //                EventId = updatedBookingDetails.event_id,
+        //                EventName = eventDetails?.event_name,
+        //                TotalAmount = updatedBookingDetails.total_amount,
+        //                Status = "confirmed",
+        //                CreatedOn = updatedBookingDetails.created_on,
+        //                QRCodeBase64 = qrCodeBase64,
+        //                ThankYouMessage = thankYouMessage,
+        //                BookingDetails = updatedBookingDetails
+        //            };
+
+        //            // Send email with QR code
+        //            await SendBookingConfirmationEmailAsync(updatedBookingDetails, qrCodeBase64, thankYouMessage);
+        //            //await SendBookingConfirmationEmailSimpleAsync(updatedBookingDetails, qrCodeBase64, thankYouMessage);
+
+        //            response.Status = "Success";
+        //            response.Message = "Booking confirmed successfully! QR code generated.";
+        //            response.ErrorCode = "0";
+        //            response.Data = qrResponse;
+        //        }
+        //        else
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "Failed to confirm booking";
+        //            response.ErrorCode = "1";
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        response.Status = "Failure";
+        //        response.Message = $"Error confirming booking: {ex.Message}";
+        //        response.ErrorCode = "1";
+        //    }
+
+        //    return response;
+        //}
+
         public async Task<CommonResponseModel<BookingQRResponse>> ConfirmBookingWithQRAsync(int bookingId, string userEmail)
         {
             var response = new CommonResponseModel<BookingQRResponse>();
@@ -794,6 +901,9 @@ namespace BAL.Services
                     // Generate QR code
                     string qrCodeBase64 = await _qrCodeService.GenerateBookingQRCodeAsync(bookingId, updatedBookingDetails);
 
+                    // STORE QR CODE IN DATABASE - THIS IS THE KEY CHANGE
+                    await _bookingRepository.UpdateBookingQRCodeAsync(bookingId, qrCodeBase64, booking.user_id.ToString());
+
                     // Get event details
                     var eventDetails = await _eventDetailsRepository.GetEventByIdAsync(updatedBookingDetails.event_id);
 
@@ -821,10 +931,9 @@ namespace BAL.Services
 
                     // Send email with QR code
                     await SendBookingConfirmationEmailAsync(updatedBookingDetails, qrCodeBase64, thankYouMessage);
-                    //await SendBookingConfirmationEmailSimpleAsync(updatedBookingDetails, qrCodeBase64, thankYouMessage);
 
                     response.Status = "Success";
-                    response.Message = "Booking confirmed successfully! QR code generated.";
+                    response.Message = "Booking confirmed successfully! QR code generated and stored.";
                     response.ErrorCode = "0";
                     response.Data = qrResponse;
                 }

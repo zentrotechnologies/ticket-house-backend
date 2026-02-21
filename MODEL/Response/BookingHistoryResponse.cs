@@ -28,6 +28,7 @@ namespace MODEL.Response
         public string razorpay_order_id { get; set; }
         public string booking_status { get; set; }
         public DateTime created_on { get; set; }
+        public string qr_code { get; set; }
         public List<BookingSeatHistoryResponse> seats { get; set; }
     }
 

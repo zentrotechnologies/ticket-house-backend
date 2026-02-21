@@ -51,6 +51,10 @@ namespace MODEL.Response
         public string? start_time { get; set; }
         public string? end_time { get; set; }
         public string? location { get; set; }
+        public string full_address { get; set; } // Add this
+        public string geo_map_url { get; set; } // Add this
+        public decimal? latitude { get; set; } // Add this
+        public decimal? longitude { get; set; } // Add this
         public string? banner_image { get; set; }
         public string? formatted_date { get; set; }
     }
