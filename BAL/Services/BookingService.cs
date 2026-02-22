@@ -2144,6 +2144,7 @@ namespace BAL.Services
                 // Replace placeholders - using "0.00" format to show exact decimals without rounding off
                 string htmlBody = template
                     .Replace("{{BookingCode}}", bookingDetails.booking_code)
+                    .Replace("{{username}}", bookingDetails.first_name)
                     .Replace("{{EventName}}", bookingDetails.event_name)
                     .Replace("{{EventDate}}", eventDate)
                     .Replace("{{EventTime}}", eventTime)

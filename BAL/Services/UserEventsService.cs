@@ -148,6 +148,13 @@ namespace BAL.Services
                     return response;
                 }
 
+                // Optional: Add logic to use EventDetailBanner if available
+                // If EventDetailBanner is null or empty, you can set it to banner_image as fallback
+                if (string.IsNullOrEmpty(eventDetails.EventDetailBanner))
+                {
+                    eventDetails.EventDetailBanner = eventDetails.banner_image;
+                }
+
                 response.Status = "Success";
                 response.Message = "Event details fetched successfully";
                 response.ErrorCode = "0";

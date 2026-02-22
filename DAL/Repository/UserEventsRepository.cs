@@ -215,13 +215,25 @@ namespace DAL.Repository
         {
             using var connection = _dbConnection.GetConnection();
 
+            //var query = $@"
+            //    SELECT 
+            //        e.*,
+            //        ec.event_category_name
+            //    FROM {events} e
+            //    LEFT JOIN event_category ec ON e.event_category_id = ec.event_category_id
+            //    WHERE e.event_id = @EventId AND e.active = 1";
+
             var query = $@"
-                SELECT 
-                    e.*,
-                    ec.event_category_name
-                FROM {events} e
-                LEFT JOIN event_category ec ON e.event_category_id = ec.event_category_id
-                WHERE e.event_id = @EventId AND e.active = 1";
+            SELECT 
+                e.*,
+                ec.event_category_name,
+                eg.event_img as EventDetailBanner
+            FROM {events} e
+            LEFT JOIN event_category ec ON e.event_category_id = ec.event_category_id
+            LEFT JOIN event_gallary eg ON e.event_id = eg.event_id AND eg.active = 1
+            WHERE e.event_id = @EventId AND e.active = 1
+            ORDER BY eg.created_on DESC
+            LIMIT 1";  // Get only one image
 
             return await connection.QueryFirstOrDefaultAsync<EventDetailsModel>(query, new { EventId = eventId });
         }

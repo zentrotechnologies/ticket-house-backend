@@ -1,4 +1,326 @@
 ﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ticket Confirmation</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: #f4f4f6;
+            display: flex;
+            justify-content: center;
+            padding: 40px 15px;
+        }
+
+        .ticket-container {
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+
+        /* Header */
+        .ticket-header {
+            background: linear-gradient(90deg, #000000, #111111);
+            padding: 20px;
+            color: #fff;
+            position: relative;
+        }
+
+            .ticket-header h2 {
+                font-size: 22px;
+                font-weight: 700;
+            }
+
+        .booking-id {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 12px;
+            text-align: right;
+            color: #bbb;
+        }
+
+        /* Confirmation Banner */
+        .confirm-banner {
+            background: linear-gradient(90deg, #8e2de2, #ff416c);
+            padding: 20px;
+            color: #fff;
+        }
+
+            .confirm-banner h3 {
+                font-size: 18px;
+                margin-bottom: 6px;
+            }
+
+            .confirm-banner p {
+                font-size: 13px;
+                color: #fff;
+            }
+
+        /*Button*/
+        .view-btn {
+            margin: 0 20px;
+            margin-bottom: 20px;
+        }
+
+            .view-btn a {
+                width: 100%;
+                padding: 14px;
+                border-radius: 10px;
+                border: none;
+                font-weight: 600;
+                font-size: 15px;
+                cursor: pointer;
+                background: linear-gradient(90deg, #8e2de2, #ff416c);
+                color: #fff;
+                transition: 0.3s;
+                display: block;
+/*                text-align: center;*/
+                text-decoration: none;
+            }
+
+                .view-btn a:hover {
+                    opacity: 0.9;
+                }
+
+        /* Event Card */
+        .event-card {
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 18px;
+            margin: 20px;
+        }
+
+            .event-card h4 {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+        .event-row {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        .event-table {
+/*            display: flex;*/
+/*            flex-direction: column;*/
+/*            justify-content: space-between;*/
+            border-top: 1px solid #eee;
+            padding-top: 12px;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        /* Ticket details */
+        .ticket-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+
+            .ticket-table th {
+                text-align: left;
+                padding: 12px 8px;
+                background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1));
+                font-weight: 600;
+            }
+
+            .ticket-table td {
+                padding: 12px 8px;
+            }
+        /* Payment Section */
+        .payment-section {
+            padding: 10px 5px 0 5px;
+            border-top: 1px solid #eee;
+        }
+
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: #555;
+        }
+
+        .total {
+            font-weight: 700;
+            font-size: 18px;
+            color: #000;
+            margin-top: 8px;
+            margin-bottom: 0px;
+        }
+
+        /* Alert Box */
+        .alert-box {
+            background: #fff4f4;
+            border: 1px solid #ffbdbd;
+            border-radius: 10px;
+            padding: 12px;
+            margin: 15px 20px;
+            font-size: 13px;
+            color: #c0392b;
+        }
+
+        /* Instructions */
+        .instructions {
+            font-size: 13px;
+            color: #555;
+        }
+
+            .instructions h5 {
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+
+            .instructions ol {
+                padding-left: 18px;
+                line-height: 20px;
+            }
+
+        /* Footer */
+        .ticket-footer {
+            background: #000;
+            color: #fff;
+            text-align: center;
+            padding: 18px;
+        }
+
+            .ticket-footer h4 {
+                color: #ff416c;
+                margin-bottom: 6px;
+            }
+
+            .ticket-footer p {
+                font-size: 12px;
+                color: #aaa;
+            }
+
+        .footer-logo {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, rgb(146, 52, 234) 30%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="ticket-container">
+
+        <div class="ticket-header">
+            <img src="https://tickethouse.in/assets/th_transparent_logo.png">
+            <div class="booking-id">
+                BOOKING ID:<br>
+                {{BookingCode}}
+            </div>
+        </div>
+
+        <div class="confirm-banner">
+            <h3>Hey {{username}}, your booking is confirmed!</h3>
+            <p>View tickets in your My Bookings on the tickethouse.in.</p>
+        </div>
+
+        <div class="event-card">
+            <h4>{{EventName}}</h4>
+
+            <div class="event-row"><strong style="color: #9445d9;">Venue:</strong><br> {{Venue}}<br><a href="#" style="color: #ff416c; font-size:12px;">View Direction</a></div>
+            <div class="event-row"><strong style="color: #9445d9;">Date & Time:</strong><br> {{EventDate}} • {{EventTime}}</div>
+            <div class="event-table">
+                <!-- <div>
+                    Category
+                    <span>LAUGHTER PASS</span>
+                </div>
+                <div>
+                    Quantity
+                    <span>1</span>
+                </div>
+                <div>
+                    Price
+                    <span>₹240.00</span>
+                </div> -->
+                <div>
+                    <h4 class="section-title">Ticket Details</h4>
+                </div>
+                <!-- Header Row -->
+                <div>
+                    <table class="ticket-table">
+                        <tr>
+                            <th>Seat Type</th>
+                            <th class="text-center">Qty</th>
+                            <th class="text-right">Price</th>
+                            <th class="text-right">Subtotal</th>
+                        </tr>
+
+                        <!-- Seat Rows -->
+                        {{SeatDetails}}
+                    </table>
+                </div>
+                <div class="payment-section">
+
+                    <!--<div class="payment-row">
+                        <span>Ticket price: </span>
+                        <span>₹240.00</span>
+                    </div>-->
+
+                    <div class="payment-row">
+                        <span>Convenience Fee: </span>
+                        <span>₹{{ConvenienceFee}}</span>
+                    </div>
+                    <!-- <div class="payment-row">
+                    <span>GST of Convenience Fee</span>
+                    <span>₹{{GSTAmount}}</span>
+                    </div> -->
+
+                    <div class="payment-row total">
+                        <h4 style="margin-bottom: 0;">Total amount paid </h4>
+                        <span>₹{{FinalAmount}}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert-box instructions">
+            <h5>How to Ticket:</h5>
+            <ol>
+                <li>Log in to <a href="tickethouse.in" style="color: #9445d9;">tickethouse.in</a> on mobile browser.</li>
+                <li>Go to My Bookings Section.</li>
+                <li>Choose your ticket and show QR Code at entry gate.</li>
+            </ol>
+        </div>
+        <div class="view-btn">
+            <a href="mailto:support@tickethouse.in" target="_blank">Contact Us for Support </a>
+        </div>
+        <div class="ticket-footer">
+            <h4 class="footer-logo">TicketHouse</h4>
+            <p style="margin-bottom: 5px;">Thank you for choosing TicketHouse!</p>
+            <p>© 2026 Zentro Technologies LLP. All Rights Reserved.</p>
+        </div>
+
+    </div>
+
+</body>
+</html>
+
+
+<!--<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -175,110 +497,101 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>🎉 BOOKING CONFIRMED</h1>
-            <p>Your tickets are ready!</p>
-        </div>
-
-        <!-- Content -->
-        <div class="content">
-            <!-- Booking Code -->
-            <div style="text-align: center; margin-bottom: 25px;">
-                <span class="booking-badge">
-                    Booking #{{BookingCode}}
-                </span>
-            </div>
-
-            <!-- Event Details -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
-                <tr>
-                    <td colspan="2" style="padding-bottom: 15px;">
-                        <h2 class="section-title">Event Details</h2>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="event-detail-label">Event:</td>
-                    <td class="event-detail-value">{{EventName}}</td>
-                </tr>
-                <tr>
-                    <td class="event-detail-label">Date:</td>
-                    <td class="event-detail-value">{{EventDate}}</td>
-                </tr>
-                <tr>
-                    <td class="event-detail-label">Time:</td>
-                    <td class="event-detail-value">{{EventTime}}</td>
-                </tr>
-                <tr>
-                    <td class="event-detail-label">Venue:</td>
-                    <td class="event-detail-value">{{Venue}}</td>
-                </tr>
-            </table>
-
-            <!-- Ticket Details -->
-            <table class="ticket-table">
-                <tr>
-                    <td colspan="4" style="padding-bottom: 15px;">
-                        <h2 class="section-title">Ticket Details</h2>
-                    </td>
-                </tr>
-
-                <!-- Header Row -->
-                <tr>
-                    <th>Seat Type</th>
-                    <th class="text-center">Qty</th>
-                    <th class="text-right">Price</th>
-                    <th class="text-right">Subtotal</th>
-                </tr>
-
-                <!-- Seat Rows -->
-                {{SeatDetails}}
-
-                <!-- Fee Rows -->
-                <tr>
-                    <td colspan="3" style="padding: 8px 8px; text-align: right; color: #64748b;">Convenience Fee:</td>
-                    <td style="padding: 8px 8px; text-align: right; color: #64748b;">₹{{ConvenienceFee}}</td>
-                </tr>
-                <tr>
-                    <td colspan="3" style="padding: 8px 8px; text-align: right; color: #64748b;">GST (18% on Convenience Fee):</td>
-                    <td style="padding: 8px 8px; text-align: right; color: #64748b;">₹{{GSTAmount}}</td>
-                </tr>
-            </table>
-
-            <!-- Total Amount Box -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-                <tr>
-                    <td class="total-box">
-                        <p class="total-label">Total Amount</p>
-                        <p class="total-amount">₹{{FinalAmount}}</p>
-                        <p class="total-subtext">Inclusive of all taxes & fees</p>
-                    </td>
-                </tr>
-            </table>
-
-            <!-- Important Notes -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-                <tr>
-                    <td class="notes-box">
-                        <p style="margin: 0 0 10px 0; font-weight: 700; color: #1e293b;">📌 Please Note:</p>
-                        <ul style="margin: 0; padding-left: 20px; color: #64748b;">
-                            <li style="margin-bottom: 8px;">Please carry a valid ID proof</li>
-                            <li style="margin-bottom: 8px;">Tickets are non-refundable</li>
-                            <li style="margin-bottom: 8px;">Gate opens 60 minutes before show time</li>
-                            <li style="margin-bottom: 8px;">This ticket is non-transferable</li>
-                        </ul>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
+    <div class="container">-->
+<!-- Header -->
+<!--<div class="header">
+    <h1>🎉 BOOKING CONFIRMED</h1>
+    <p>Your tickets are ready!</p>
+</div>-->
+<!-- Content -->
+<!--<div class="content">-->
+<!-- Booking Code -->
+<!--<div style="text-align: center; margin-bottom: 25px;">
+    <span class="booking-badge">
+        Booking #{{BookingCode}}
+    </span>
+</div>-->
+<!-- Event Details -->
+<!--<table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+    <tr>
+        <td colspan="2" style="padding-bottom: 15px;">
+            <h2 class="section-title">Event Details</h2>
+        </td>
+    </tr>
+    <tr>
+        <td class="event-detail-label">Event:</td>
+        <td class="event-detail-value">{{EventName}}</td>
+    </tr>
+    <tr>
+        <td class="event-detail-label">Date:</td>
+        <td class="event-detail-value">{{EventDate}}</td>
+    </tr>
+    <tr>
+        <td class="event-detail-label">Time:</td>
+        <td class="event-detail-value">{{EventTime}}</td>
+    </tr>
+    <tr>
+        <td class="event-detail-label">Venue:</td>
+        <td class="event-detail-value">{{Venue}}</td>
+    </tr>
+</table>-->
+<!-- Ticket Details -->
+<!--<table class="ticket-table">
+    <tr>
+        <td colspan="4" style="padding-bottom: 15px;">
+            <h2 class="section-title">Ticket Details</h2>
+        </td>
+    </tr>-->
+<!-- Header Row -->
+<!--<tr>
+    <th>Seat Type</th>
+    <th class="text-center">Qty</th>
+    <th class="text-right">Price</th>
+    <th class="text-right">Subtotal</th>
+</tr>-->
+<!-- Seat Rows -->
+<!--{{SeatDetails}}-->
+<!-- Fee Rows -->
+<!--<tr>
+        <td colspan="3" style="padding: 8px 8px; text-align: right; color: #64748b;">Convenience Fee:</td>
+        <td style="padding: 8px 8px; text-align: right; color: #64748b;">₹{{ConvenienceFee}}</td>
+    </tr>
+    <tr>
+        <td colspan="3" style="padding: 8px 8px; text-align: right; color: #64748b;">GST (18% on Convenience Fee):</td>
+        <td style="padding: 8px 8px; text-align: right; color: #64748b;">₹{{GSTAmount}}</td>
+    </tr>
+</table>-->
+<!-- Total Amount Box -->
+<!--<table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+    <tr>
+        <td class="total-box">
+            <p class="total-label">Total Amount</p>
+            <p class="total-amount">₹{{FinalAmount}}</p>
+            <p class="total-subtext">Inclusive of all taxes & fees</p>
+        </td>
+    </tr>
+</table>-->
+<!-- Important Notes -->
+<!--<table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+        <tr>
+            <td class="notes-box">
+                <p style="margin: 0 0 10px 0; font-weight: 700; color: #1e293b;">📌 Please Note:</p>
+                <ul style="margin: 0; padding-left: 20px; color: #64748b;">
+                    <li style="margin-bottom: 8px;">Please carry a valid ID proof</li>
+                    <li style="margin-bottom: 8px;">Tickets are non-refundable</li>
+                    <li style="margin-bottom: 8px;">Gate opens 60 minutes before show time</li>
+                    <li style="margin-bottom: 8px;">This ticket is non-transferable</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+</div>-->
+<!-- Footer -->
+<!--<div class="footer">
             <p class="footer-logo">TicketHouse</p>
             <p class="footer-text">Thank you for choosing TicketHouse!</p>
             <p class="footer-copyright">© {{CurrentYear}} TicketHouse. All rights reserved.</p>
         </div>
     </div>
 </body>
-</html>
+</html>-->

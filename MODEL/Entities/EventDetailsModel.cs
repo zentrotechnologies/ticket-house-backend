@@ -45,6 +45,7 @@ namespace MODEL.Entities
         public DateTime? updated_at { get; set; } = DateTime.UtcNow;
         public int active { get; set; } = 1;
         public decimal? convenience_fee { get; set; }  // Add this line
+        public string EventDetailBanner { get; set; } // Add this new property
     }
 
     public class EventMediaModel
