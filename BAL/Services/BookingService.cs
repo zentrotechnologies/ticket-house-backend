@@ -2128,6 +2128,9 @@ namespace BAL.Services
                 string eventDate = bookingDetails.event_date.ToString("dddd, MMMM dd, yyyy");
                 string eventTime = $"{bookingDetails.start_time} - {bookingDetails.end_time}";
 
+                // Calculate subtotal total (sum of all seat subtotals)
+                decimal subtotalTotal = bookingDetails.BookingSeats.Sum(bs => bs.subtotal);
+
                 // Build seat details HTML - using "F2" format to show exact decimals without rounding
                 string seatDetailsHtml = "";
                 foreach (var bs in bookingDetails.BookingSeats)
@@ -2141,6 +2144,10 @@ namespace BAL.Services
                 </tr>";
                 }
 
+                string geoMapUrl = bookingDetails.geo_map_url ?? "#"; // Fallback if not available
+                                                                      // Log the final value being used
+                _logger.LogInformation($"Final GeoMapUrl being used in template: {geoMapUrl}");
+
                 // Replace placeholders - using "0.00" format to show exact decimals without rounding off
                 string htmlBody = template
                     .Replace("{{BookingCode}}", bookingDetails.booking_code)
@@ -2149,7 +2156,9 @@ namespace BAL.Services
                     .Replace("{{EventDate}}", eventDate)
                     .Replace("{{EventTime}}", eventTime)
                     .Replace("{{Venue}}", bookingDetails.location)
+                    .Replace("{{GeoMapUrl}}", geoMapUrl)
                     .Replace("{{SeatDetails}}", seatDetailsHtml)
+                    .Replace("{{SubtotalTotal}}", subtotalTotal.ToString("0.00"))  // New placeholder for subtotal total
                     .Replace("{{ConvenienceFee}}", bookingDetails.convenience_fee.ToString("0.00"))
                     .Replace("{{GSTAmount}}", bookingDetails.gst_amount.ToString("0.00"))
                     .Replace("{{FinalAmount}}", bookingDetails.final_amount.ToString("0.00"))

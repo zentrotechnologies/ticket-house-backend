@@ -4,594 +4,171 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ticket Confirmation</title>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background: #f4f4f6;
-            display: flex;
-            justify-content: center;
-            padding: 40px 15px;
-        }
-
-        .ticket-container {
-            width: 100%;
-            max-width: 520px;
-            background: #fff;
-            border-radius: 18px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        }
-
-        /* Header */
-        .ticket-header {
-            background: linear-gradient(90deg, #000000, #111111);
-            padding: 20px;
-            color: #fff;
-            position: relative;
-        }
-
-            .ticket-header h2 {
-                font-size: 22px;
-                font-weight: 700;
-            }
-
-        .booking-id {
-            position: absolute;
-            right: 20px;
-            top: 20px;
-            font-size: 12px;
-            text-align: right;
-            color: #bbb;
-        }
-
-        /* Confirmation Banner */
-        .confirm-banner {
-            background: linear-gradient(90deg, #8e2de2, #ff416c);
-            padding: 20px;
-            color: #fff;
-        }
-
-            .confirm-banner h3 {
-                font-size: 18px;
-                margin-bottom: 6px;
-            }
-
-            .confirm-banner p {
-                font-size: 13px;
-                color: #fff;
-            }
-
-        /*Button*/
-        .view-btn {
-            margin: 0 20px;
-            margin-bottom: 20px;
-        }
-
-            .view-btn a {
-                width: 100%;
-                padding: 14px;
-                border-radius: 10px;
-                border: none;
-                font-weight: 600;
-                font-size: 15px;
-                cursor: pointer;
-                background: linear-gradient(90deg, #8e2de2, #ff416c);
-                color: #fff;
-                transition: 0.3s;
-                display: block;
-/*                text-align: center;*/
-                text-decoration: none;
-            }
-
-                .view-btn a:hover {
-                    opacity: 0.9;
-                }
-
-        /* Event Card */
-        .event-card {
-            border: 1px solid #e5e5e5;
-            border-radius: 12px;
-            padding: 18px;
-            margin: 20px;
-        }
-
-            .event-card h4 {
-                font-size: 16px;
-                margin-bottom: 12px;
-            }
-
-        .event-row {
-            font-size: 14px;
-            margin-bottom: 8px;
-            color: #555;
-        }
-
-        .event-table {
-/*            display: flex;*/
-/*            flex-direction: column;*/
-/*            justify-content: space-between;*/
-            border-top: 1px solid #eee;
-            padding-top: 12px;
-            margin-top: 12px;
-            font-size: 14px;
-        }
-
-        /* Ticket details */
-        .ticket-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 25px;
-        }
-
-            .ticket-table th {
-                text-align: left;
-                padding: 12px 8px;
-                background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1));
-                font-weight: 600;
-            }
-
-            .ticket-table td {
-                padding: 12px 8px;
-            }
-        /* Payment Section */
-        .payment-section {
-            padding: 10px 5px 0 5px;
-            border-top: 1px solid #eee;
-        }
-
-        .payment-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 14px;
-            margin-bottom: 6px;
-            color: #555;
-        }
-
-        .total {
-            font-weight: 700;
-            font-size: 18px;
-            color: #000;
-            margin-top: 8px;
-            margin-bottom: 0px;
-        }
-
-        /* Alert Box */
-        .alert-box {
-            background: #fff4f4;
-            border: 1px solid #ffbdbd;
-            border-radius: 10px;
-            padding: 12px;
-            margin: 15px 20px;
-            font-size: 13px;
-            color: #c0392b;
-        }
-
-        /* Instructions */
-        .instructions {
-            font-size: 13px;
-            color: #555;
-        }
-
-            .instructions h5 {
-                margin-bottom: 8px;
-                font-size: 14px;
-            }
-
-            .instructions ol {
-                padding-left: 18px;
-                line-height: 20px;
-            }
-
-        /* Footer */
-        .ticket-footer {
-            background: #000;
-            color: #fff;
-            text-align: center;
-            padding: 18px;
-        }
-
-            .ticket-footer h4 {
-                color: #ff416c;
-                margin-bottom: 6px;
-            }
-
-            .ticket-footer p {
-                font-size: 12px;
-                color: #aaa;
-            }
-
-        .footer-logo {
-            margin: 0 0 10px 0;
-            font-size: 24px;
-            font-weight: 800;
-            background: linear-gradient(135deg, rgb(146, 52, 234) 30%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-    </style>
 </head>
+<body style="margin: 0; padding: 20px; background-color: #f4f4f6; font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;">
 
-<body>
-
-    <div class="ticket-container">
-
-        <div class="ticket-header">
-            <img src="https://tickethouse.in/assets/th_transparent_logo.png">
-            <div class="booking-id">
-                BOOKING ID:<br>
-                {{BookingCode}}
-            </div>
-        </div>
-
-        <div class="confirm-banner">
-            <h3>Hey {{username}}, your booking is confirmed!</h3>
-            <p>View tickets in your My Bookings on the tickethouse.in.</p>
-        </div>
-
-        <div class="event-card">
-            <h4>{{EventName}}</h4>
-
-            <div class="event-row"><strong style="color: #9445d9;">Venue:</strong><br> {{Venue}}<br><a href="#" style="color: #ff416c; font-size:12px;">View Direction</a></div>
-            <div class="event-row"><strong style="color: #9445d9;">Date & Time:</strong><br> {{EventDate}} • {{EventTime}}</div>
-            <div class="event-table">
-                <!-- <div>
-                    Category
-                    <span>LAUGHTER PASS</span>
-                </div>
-                <div>
-                    Quantity
-                    <span>1</span>
-                </div>
-                <div>
-                    Price
-                    <span>₹240.00</span>
-                </div> -->
-                <div>
-                    <h4 class="section-title">Ticket Details</h4>
-                </div>
-                <!-- Header Row -->
-                <div>
-                    <table class="ticket-table">
-                        <tr>
-                            <th>Seat Type</th>
-                            <th class="text-center">Qty</th>
-                            <th class="text-right">Price</th>
-                            <th class="text-right">Subtotal</th>
-                        </tr>
-
-                        <!-- Seat Rows -->
-                        {{SeatDetails}}
-                    </table>
-                </div>
-                <div class="payment-section">
-
-                    <!--<div class="payment-row">
-                        <span>Ticket price: </span>
-                        <span>₹240.00</span>
-                    </div>-->
-
-                    <div class="payment-row">
-                        <span>Convenience Fee: </span>
-                        <span>₹{{ConvenienceFee}}</span>
-                    </div>
-                    <!-- <div class="payment-row">
-                    <span>GST of Convenience Fee</span>
-                    <span>₹{{GSTAmount}}</span>
-                    </div> -->
-
-                    <div class="payment-row total">
-                        <h4 style="margin-bottom: 0;">Total amount paid </h4>
-                        <span>₹{{FinalAmount}}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="alert-box instructions">
-            <h5>How to Ticket:</h5>
-            <ol>
-                <li>Log in to <a href="tickethouse.in" style="color: #9445d9;">tickethouse.in</a> on mobile browser.</li>
-                <li>Go to My Bookings Section.</li>
-                <li>Choose your ticket and show QR Code at entry gate.</li>
-            </ol>
-        </div>
-        <div class="view-btn">
-            <a href="mailto:support@tickethouse.in" target="_blank">Contact Us for Support </a>
-        </div>
-        <div class="ticket-footer">
-            <h4 class="footer-logo">TicketHouse</h4>
-            <p style="margin-bottom: 5px;">Thank you for choosing TicketHouse!</p>
-            <p>© 2026 Zentro Technologies LLP. All Rights Reserved.</p>
-        </div>
-
-    </div>
-
-</body>
-</html>
-
-
-<!--<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Booking Confirmed - TicketHouse</title>
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-            color: #1e293b;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        .header {
-            padding: 40px 30px;
-            background: linear-gradient(135deg, rgb(146, 52, 234) 0%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
-            text-align: center;
-            border-radius: 16px 16px 0 0;
-        }
-
-            .header h1 {
-                margin: 0 0 10px 0;
-                font-size: 32px;
-                font-weight: 800;
-                color: #ffffff;
-            }
-
-            .header p {
-                margin: 0;
-                font-size: 16px;
-                color: rgba(255, 255, 255, 0.9);
-            }
-
-        .content {
-            padding: 30px;
-        }
-
-        .booking-badge {
-            background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1));
-            padding: 12px 30px;
-            border-radius: 40px;
-            font-size: 18px;
-            font-weight: 700;
-            display: inline-block;
-        }
-
-        .section-title {
-            margin: 0 0 15px 0;
-            font-size: 20px;
-            font-weight: 700;
-            background: linear-gradient(135deg, rgb(146, 52, 234) 0%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .event-detail-label {
-            padding: 8px 0;
-            color: #64748b;
-            width: 120px;
-        }
-
-        .event-detail-value {
-            padding: 8px 0;
-            font-weight: 600;
-        }
-
-        .ticket-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 25px;
-        }
-
-            .ticket-table th {
-                text-align: left;
-                padding: 12px 8px;
-                background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1));
-                font-weight: 600;
-            }
-
-            .ticket-table td {
-                padding: 12px 8px;
-            }
-
-        .ticket-row {
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .text-right {
-            text-align: right;
-        }
-
-        .fee-row {
-            padding: 8px 8px;
-            text-align: right;
-            color: #64748b;
-        }
-
-        .total-box {
-            background: linear-gradient(135deg, rgb(146, 52, 234) 0%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .total-label {
-            margin: 0 0 5px 0;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 14px;
-        }
-
-        .total-amount {
-            margin: 0;
-            font-size: 36px;
-            font-weight: 800;
-            color: #ffffff;
-        }
-
-        .total-subtext {
-            margin: 5px 0 0 0;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 12px;
-        }
-
-        .notes-box {
-            background-color: #fff9e6;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #ffd700;
-        }
-
-        .footer {
-            background-color: #000000;
-            padding: 30px;
-            text-align: center;
-            border-radius: 0 0 16px 16px;
-        }
-
-        .footer-logo {
-            margin: 0 0 10px 0;
-            font-size: 24px;
-            font-weight: 800;
-            background: linear-gradient(135deg, rgb(146, 52, 234) 0%, rgb(226, 54, 163) 50%, rgb(239, 67, 67) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .footer-text {
-            margin: 5px 0;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .footer-copyright {
-            margin: 5px 0;
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 12px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">-->
-<!-- Header -->
-<!--<div class="header">
-    <h1>🎉 BOOKING CONFIRMED</h1>
-    <p>Your tickets are ready!</p>
-</div>-->
-<!-- Content -->
-<!--<div class="content">-->
-<!-- Booking Code -->
-<!--<div style="text-align: center; margin-bottom: 25px;">
-    <span class="booking-badge">
-        Booking #{{BookingCode}}
-    </span>
-</div>-->
-<!-- Event Details -->
-<!--<table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
-    <tr>
-        <td colspan="2" style="padding-bottom: 15px;">
-            <h2 class="section-title">Event Details</h2>
-        </td>
-    </tr>
-    <tr>
-        <td class="event-detail-label">Event:</td>
-        <td class="event-detail-value">{{EventName}}</td>
-    </tr>
-    <tr>
-        <td class="event-detail-label">Date:</td>
-        <td class="event-detail-value">{{EventDate}}</td>
-    </tr>
-    <tr>
-        <td class="event-detail-label">Time:</td>
-        <td class="event-detail-value">{{EventTime}}</td>
-    </tr>
-    <tr>
-        <td class="event-detail-label">Venue:</td>
-        <td class="event-detail-value">{{Venue}}</td>
-    </tr>
-</table>-->
-<!-- Ticket Details -->
-<!--<table class="ticket-table">
-    <tr>
-        <td colspan="4" style="padding-bottom: 15px;">
-            <h2 class="section-title">Ticket Details</h2>
-        </td>
-    </tr>-->
-<!-- Header Row -->
-<!--<tr>
-    <th>Seat Type</th>
-    <th class="text-center">Qty</th>
-    <th class="text-right">Price</th>
-    <th class="text-right">Subtotal</th>
-</tr>-->
-<!-- Seat Rows -->
-<!--{{SeatDetails}}-->
-<!-- Fee Rows -->
-<!--<tr>
-        <td colspan="3" style="padding: 8px 8px; text-align: right; color: #64748b;">Convenience Fee:</td>
-        <td style="padding: 8px 8px; text-align: right; color: #64748b;">₹{{ConvenienceFee}}</td>
-    </tr>
-    <tr>
-        <td colspan="3" style="padding: 8px 8px; text-align: right; color: #64748b;">GST (18% on Convenience Fee):</td>
-        <td style="padding: 8px 8px; text-align: right; color: #64748b;">₹{{GSTAmount}}</td>
-    </tr>
-</table>-->
-<!-- Total Amount Box -->
-<!--<table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-    <tr>
-        <td class="total-box">
-            <p class="total-label">Total Amount</p>
-            <p class="total-amount">₹{{FinalAmount}}</p>
-            <p class="total-subtext">Inclusive of all taxes & fees</p>
-        </td>
-    </tr>
-</table>-->
-<!-- Important Notes -->
-<!--<table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+    <!-- Main Container -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-collapse: collapse;">
         <tr>
-            <td class="notes-box">
-                <p style="margin: 0 0 10px 0; font-weight: 700; color: #1e293b;">📌 Please Note:</p>
-                <ul style="margin: 0; padding-left: 20px; color: #64748b;">
-                    <li style="margin-bottom: 8px;">Please carry a valid ID proof</li>
-                    <li style="margin-bottom: 8px;">Tickets are non-refundable</li>
-                    <li style="margin-bottom: 8px;">Gate opens 60 minutes before show time</li>
-                    <li style="margin-bottom: 8px;">This ticket is non-transferable</li>
-                </ul>
+            <td style="padding: 0;">
+
+                <!-- Header with Image and Booking ID -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(90deg, #000000, #111111); border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 20px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left" style="padding: 0;">
+                                        <img src="https://tickethouse.in/assets/th_transparent_logo.png" alt="TicketHouse" width="120" style="display: block; border: 0; width: 120px; height: auto;">
+                                    </td>
+                                    <td align="right" style="padding: 0;">
+                                        <div style="font-size: 12px; text-align: right; color: #bbb; line-height: 1.4;">
+                                            BOOKING ID:<br>
+                                            <span style="font-weight: 600; color: #fff;">{{BookingCode}}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Confirmation Banner -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(90deg, #8e2de2, #ff416c); border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 20px; color: #ffffff;">
+                            <h3 style="font-size: 18px; margin: 0 0 6px 0; font-weight: 600;">Hey {{username}}, your booking is confirmed!</h3>
+                            <p style="font-size: 13px; margin: 0; color: #ffffff; opacity: 0.9;">View tickets in your My Bookings on the tickethouse.in.</p>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Event Card -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding: 20px; border-collapse: collapse;">
+                    <tr>
+                        <td style="border: 1px solid #e5e5e5; border-radius: 12px; padding: 20px;">
+
+                            <h4 style="font-size: 18px; margin: 0 0 16px 0; color: #1a1a1a;">{{EventName}}</h4>
+
+                            <div style="font-size: 14px; margin-bottom: 16px; color: #555;">
+                                <strong style="color: #9445d9; display: block; margin-bottom: 4px;">Venue:</strong>
+                                <span style="color: #333;">{{Venue}}</span><br>
+                                <a href="{{GeoMapUrl}}" target="_blank" style="color: #ff416c; font-size:12px; text-decoration: none; display: inline-block; margin-top: 4px;">View Direction →</a>
+                            </div>
+
+                            <div style="font-size: 14px; margin-bottom: 16px; color: #555;">
+                                <strong style="color: #9445d9; display: block; margin-bottom: 4px;">Date & Time:</strong>
+                                <span style="color: #333;">{{EventDate}} • {{EventTime}}</span>
+                            </div>
+
+                            <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 8px;">
+
+                                <h4 style="font-size: 16px; margin: 0 0 16px 0; color: #1a1a1a;">Ticket Details</h4>
+
+                                <!-- Ticket Table -->
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin-bottom: 20px;">
+                                    <thead>
+                                        <tr>
+                                            <th style="padding: 12px 8px; background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1)); font-weight: 600; text-align: center; border-radius: 8px 0 0 0;">Seat Type</th>
+                                            <th style="padding: 12px 8px; background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1)); font-weight: 600; text-align: center;">Qty</th>
+                                            <th style="padding: 12px 8px; background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1)); font-weight: 600; text-align: center;">Price</th>
+                                            <th style="padding: 12px 8px; background: linear-gradient(135deg, rgba(146, 52, 234, 0.1), rgba(226, 54, 163, 0.1), rgba(239, 67, 67, 0.1)); font-weight: 600; text-align: center; border-radius: 0 8px 0 0;">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{SeatDetails}}
+                                    </tbody>
+                                </table>
+
+                                <!-- Payment Section - Stacked and Aligned Right -->
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top: 1px solid #eee; padding-top: 16px; margin-top: 8px;">
+                                    <tr>
+                                        <td align="right" style="padding: 0;">
+                                            <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 280px;">
+
+                                                <!-- Subtotal Total (Sum of all seat subtotals) -->
+                                                <tr>
+                                                    <td style="padding: 4px 0 8px 0; border-bottom: 1px dashed #ddd;">
+                                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                                            <tr>
+                                                                <td style="font-size: 15px; font-weight: 600; color: #333; padding-right: 20px;">Subtotal:</td>
+                                                                <td style="font-size: 15px; font-weight: 600; color: #333; text-align: right;">₹{{SubtotalTotal}}</td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+
+                                                <!-- Convenience Fee -->
+                                                <tr>
+                                                    <td style="padding: 8px 0 4px 0;">
+                                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                                            <tr>
+                                                                <td style="font-size: 14px; color: #666; padding-right: 20px;">Convenience Fee & GST(18%):</td>
+                                                                <td style="font-size: 14px; color: #333; text-align: right; font-weight: 500;">₹{{ConvenienceFee}}</td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+
+                                                <!-- Final Amount to Pay (renamed from Total amount paid) -->
+                                                <tr>
+                                                    <td style="padding: 8px 0 0 0;">
+                                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                                            <tr>
+                                                                <td style="font-size: 16px; font-weight: 700; color: #000; padding-right: 20px;">Final amount paid:</td>
+                                                                <td style="font-size: 18px; font-weight: 700; color: #8e2de2; text-align: right;">₹{{FinalAmount}}</td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Alert Box / Instructions -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding: 0 20px; border-collapse: collapse;">
+                    <tr>
+                        <td style="background: #fff8f8; border: 1px solid #ffd7d7; border-radius: 12px; padding: 16px; font-size: 13px; color: #c0392b; margin: 0 0 20px 0;">
+                            <h5 style="margin: 0 0 12px 0; font-size: 15px; color: #c0392b; font-weight: 600;">📱 How to Use Your Ticket:</h5>
+                            <ol style="margin: 0; padding-left: 20px; line-height: 1.6; color: #555;">
+                                <li style="margin-bottom: 6px;">Log in to <a href="tickethouse.in" style="color: #8e2de2; text-decoration: none; font-weight: 500;">tickethouse.in</a> on mobile browser.</li>
+                                <li style="margin-bottom: 6px;">Go to <strong>My Bookings</strong> Section.</li>
+                                <li style="margin-bottom: 6px;">Choose your ticket and show QR Code at entry gate.</li>
+                            </ol>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Contact Button -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding: 0 20px 20px 20px; border-collapse: collapse; margin-top: 10px;">
+                    <tr>
+                        <td>
+                            <a href="mailto:support@tickethouse.in" target="_blank" style="display: block; width: 100%; padding: 14px 20px; border-radius: 12px; border: none; font-weight: 600; font-size: 15px; background: linear-gradient(90deg, #8e2de2, #ff416c); color: #fff; text-decoration: none; text-align: center; box-sizing: border-box;">
+                                📧 Contact Us for Support
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Footer -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #000000; color: #fff; text-align: center; border-collapse: collapse; margin-top: 10px;">
+                    <tr>
+                        <td style="padding: 24px 20px;">
+                            <h4 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #8e2de2, #ff416c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">TicketHouse</h4>
+                            <p style="margin: 0 0 6px 0; font-size: 13px; color: #ccc;">Thank you for choosing TicketHouse!</p>
+                            <p style="margin: 0; font-size: 11px; color: #888;">© 2026 Zentro Technologies LLP. All Rights Reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+
             </td>
         </tr>
     </table>
-</div>-->
-<!-- Footer -->
-<!--<div class="footer">
-            <p class="footer-logo">TicketHouse</p>
-            <p class="footer-text">Thank you for choosing TicketHouse!</p>
-            <p class="footer-copyright">© {{CurrentYear}} TicketHouse. All rights reserved.</p>
-        </div>
-    </div>
+
 </body>
-</html>-->
+</html>

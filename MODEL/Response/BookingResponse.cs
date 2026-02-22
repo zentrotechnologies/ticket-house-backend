@@ -48,6 +48,7 @@ namespace MODEL.Response
         public TimeSpan start_time { get; set; }
         public TimeSpan end_time { get; set; }
         public string location { get; set; }
+        public string geo_map_url { get; set; }
         public string banner_image { get; set; }
         public decimal total_amount { get; set; }
         public decimal booking_amount { get; set; }  // Add this
