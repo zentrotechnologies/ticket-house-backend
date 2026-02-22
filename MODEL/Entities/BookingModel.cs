@@ -38,6 +38,10 @@ namespace MODEL.Entities
         public decimal final_amount { get; set; } // Total for Razorpay
         //public string currency { get; set; } = "INR";
         public string? qr_code { get; set; }
+        // Add to your existing BookingModel class
+        public int? coupon_id { get; set; }
+        public decimal discount_amount { get; set; } = 0;
+        public string coupon_code_applied { get; set; }
     }
 
     public class BookingSeatModel

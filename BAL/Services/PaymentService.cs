@@ -29,6 +29,7 @@ namespace BAL.Services
         private readonly IEventDetailsRepository _eventDetailsRepository;
         private readonly IUserRepository _userRepository;
         private readonly IPaymentRepository _paymentRepository;
+        private readonly ICouponRepository _couponRepository;
         private readonly THConfiguration _configuration;
         private readonly RazorpayClient _razorpayClient;
 
@@ -37,7 +38,8 @@ namespace BAL.Services
             IUserRepository userRepository,
             IPaymentRepository paymentRepository,
             THConfiguration configuration,
-            IEventDetailsRepository eventDetailsRepository)
+            IEventDetailsRepository eventDetailsRepository,
+            ICouponRepository couponRepository)
         {
             _bookingRepository = bookingRepository;
             _userRepository = userRepository;
@@ -49,6 +51,7 @@ namespace BAL.Services
                 _configuration.Razorpay.KeyId,
                 _configuration.Razorpay.KeySecret);
             _eventDetailsRepository = eventDetailsRepository;
+            _couponRepository = couponRepository;
         }
 
         //public async Task<CommonResponseModel<PaymentOrderResponse>> CreatePaymentOrderAsync(CreatePaymentOrderRequest request, string userEmail)
@@ -1225,6 +1228,8 @@ namespace BAL.Services
         //}
 
 
+        // Update the CreateBookingWithPaymentAsync method in PaymentService.cs
+
         public async Task<CommonResponseModel<PaymentOrderResponse>> CreateBookingWithPaymentAsync(CreateBookingWithPaymentRequest request, string userEmail)
         {
             var response = new CommonResponseModel<PaymentOrderResponse>();
@@ -1251,10 +1256,7 @@ namespace BAL.Services
                     return response;
                 }
 
-                // Get convenience fee percentage from event (default to 6 if not set)
-                decimal convenienceFeePercentage = eventDetails.convenience_fee ?? 6m;
-
-                // Check seat availability (BUT DON'T RESERVE YET)
+                // Check seat availability
                 foreach (var seatSelection in request.SeatSelections)
                 {
                     var isAvailable = await _bookingRepository.CheckSeatAvailabilityAsync(
@@ -1270,14 +1272,6 @@ namespace BAL.Services
                     }
                 }
 
-                // REMOVED: Temporarily reserve seats - DON'T RESERVE UNTIL PAYMENT IS CONFIRMED
-                // string userIdString = user.user_id.ToString();
-                // foreach (var seatSelection in request.SeatSelections)
-                // {
-                //     await _bookingRepository.ReserveSeatsAsync(
-                //         seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
-                // }
-
                 // Calculate amounts
                 decimal totalAmount = 0;
                 foreach (var seatSelection in request.SeatSelections)
@@ -1287,16 +1281,39 @@ namespace BAL.Services
                     totalAmount += subtotal;
                 }
 
-                // Calculate fees
-                //var fees = FeeCalculator.CalculateFees(totalAmount);
+                // Get convenience fee percentage from event
+                decimal convenienceFeePercentage = eventDetails.convenience_fee ?? 6m;
 
-                // Calculate fees using dynamic percentage from event
+                // Calculate fees
                 var fees = FeeCalculator.CalculateFees(totalAmount, convenienceFeePercentage);
+
+                // Apply coupon discount if provided - FIX: Check for null or empty string
+                decimal finalAmount = fees.finalAmount;
+                decimal discountAmount = 0;
+                int? couponId = null;
+                string couponCode = null;
+
+                if (!string.IsNullOrEmpty(request.CouponCode) && request.DiscountAmount > 0)
+                {
+                    discountAmount = request.DiscountAmount;
+                    finalAmount = fees.finalAmount - discountAmount;
+
+                    // Get the coupon ID from the code
+                    var coupon = await _couponRepository.GetCouponByCodeAsync(request.CouponCode);
+                    if (coupon != null)
+                    {
+                        couponId = coupon.coupon_id;
+                        couponCode = coupon.coupon_code;
+
+                        // Validate that the coupon is applicable for this booking
+                        // (You may want to add additional validation here)
+                    }
+                }
 
                 // Generate booking code
                 var bookingCode = $"ZTH{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
 
-                // Create booking in PENDING_PAYMENT status
+                // Create booking
                 var booking = new BookingModel
                 {
                     booking_code = bookingCode,
@@ -1306,18 +1323,22 @@ namespace BAL.Services
                     booking_amount = totalAmount,
                     convenience_fee = fees.convenienceFee,
                     gst_amount = fees.gstAmount,
-                    final_amount = fees.finalAmount,
-                    status = "pending_payment", // Status is pending payment, not confirmed
+                    final_amount = finalAmount, // Amount after coupon discount
+                    status = "pending_payment",
                     currency = "INR",
                     created_by = user.user_id.ToString(),
-                    updated_by = user.user_id.ToString()
+                    updated_by = user.user_id.ToString(),
+                    // Coupon fields - set to null if no coupon
+                    coupon_id = couponId,
+                    discount_amount = discountAmount,
+                    coupon_code_applied = couponCode
                 };
 
                 var bookingId = await _bookingRepository.CreateBookingAsync(booking);
 
                 if (bookingId > 0)
                 {
-                    // Create booking seats (but these are just records, seats not deducted yet)
+                    // Create booking seats
                     var bookingSeats = new List<BookingSeatModel>();
                     foreach (var seatSelection in request.SeatSelections)
                     {
@@ -1329,7 +1350,7 @@ namespace BAL.Services
                             booking_id = bookingId,
                             event_seat_type_inventory_id = seatSelection.SeatTypeId,
                             quantity = seatSelection.Quantity,
-                            remaining_quantity = seatSelection.Quantity, // Initially same as quantity
+                            remaining_quantity = seatSelection.Quantity,
                             price_per_seat = seatType.price,
                             subtotal = subtotal,
                             created_by = user.user_id.ToString(),
@@ -1341,28 +1362,28 @@ namespace BAL.Services
 
                     await _bookingRepository.CreateBookingSeatsAsync(bookingSeats);
 
-                    // Now create Razorpay order - IMPORTANT: Use final_amount
+                    // Create Razorpay order with final amount (after coupon)
                     var paymentRequest = new CreatePaymentOrderRequest
                     {
                         BookingId = bookingId,
-                        Amount = fees.finalAmount,
+                        Amount = finalAmount, // Use amount after coupon
                         Currency = "INR",
                         Notes = new Dictionary<string, string>
-                        {
-                            { "eventId", request.EventId.ToString() },
-                            { "eventName", eventDetails.event_name },
-                            { "userId", user.user_id.ToString() },
-                            { "bookingCode", bookingCode },
-                            { "convenienceFeePercentage", convenienceFeePercentage.ToString() }
-                        }
+                {
+                    { "eventId", request.EventId.ToString() },
+                    { "eventName", eventDetails.event_name },
+                    { "userId", user.user_id.ToString() },
+                    { "bookingCode", bookingCode },
+                    { "originalAmount", totalAmount.ToString() },
+                    { "discountAmount", discountAmount.ToString() },
+                    { "couponCode", couponCode ?? "" }
+                }
                     };
 
-                    // Call the fixed CreatePaymentOrderAsync method
                     return await CreatePaymentOrderAsync(paymentRequest, userEmail);
                 }
                 else
                 {
-                    // No need to release seats since we never reserved them
                     response.Status = "Failure";
                     response.Message = "Failed to create booking";
                     response.ErrorCode = "1";
@@ -1377,6 +1398,160 @@ namespace BAL.Services
                 return response;
             }
         }
+
+        //---------correct before coupon
+        //public async Task<CommonResponseModel<PaymentOrderResponse>> CreateBookingWithPaymentAsync(CreateBookingWithPaymentRequest request, string userEmail)
+        //{
+        //    var response = new CommonResponseModel<PaymentOrderResponse>();
+
+        //    try
+        //    {
+        //        // Get user
+        //        var user = await _userRepository.GetUserByEmail(userEmail);
+        //        if (user == null)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "User not found";
+        //            response.ErrorCode = "404";
+        //            return response;
+        //        }
+
+        //        // Check event exists
+        //        var eventDetails = await _eventDetailsRepository.GetEventByIdAsync(request.EventId);
+        //        if (eventDetails == null)
+        //        {
+        //            response.Status = "Failure";
+        //            response.Message = "Event not found";
+        //            response.ErrorCode = "404";
+        //            return response;
+        //        }
+
+        //        // Get convenience fee percentage from event (default to 6 if not set)
+        //        decimal convenienceFeePercentage = eventDetails.convenience_fee ?? 6m;
+
+        //        // Check seat availability (BUT DON'T RESERVE YET)
+        //        foreach (var seatSelection in request.SeatSelections)
+        //        {
+        //            var isAvailable = await _bookingRepository.CheckSeatAvailabilityAsync(
+        //                seatSelection.SeatTypeId, seatSelection.Quantity);
+
+        //            if (!isAvailable)
+        //            {
+        //                var seatType = await _bookingRepository.GetSeatTypeByIdAsync(seatSelection.SeatTypeId);
+        //                response.Status = "Failure";
+        //                response.Message = $"Not enough seats available for {seatType?.seat_name}";
+        //                response.ErrorCode = "400";
+        //                return response;
+        //            }
+        //        }
+
+        //        // REMOVED: Temporarily reserve seats - DON'T RESERVE UNTIL PAYMENT IS CONFIRMED
+        //        // string userIdString = user.user_id.ToString();
+        //        // foreach (var seatSelection in request.SeatSelections)
+        //        // {
+        //        //     await _bookingRepository.ReserveSeatsAsync(
+        //        //         seatSelection.SeatTypeId, seatSelection.Quantity, userIdString);
+        //        // }
+
+        //        // Calculate amounts
+        //        decimal totalAmount = 0;
+        //        foreach (var seatSelection in request.SeatSelections)
+        //        {
+        //            var seatType = await _bookingRepository.GetSeatTypeByIdAsync(seatSelection.SeatTypeId);
+        //            var subtotal = seatType.price * seatSelection.Quantity;
+        //            totalAmount += subtotal;
+        //        }
+
+        //        // Calculate fees
+        //        //var fees = FeeCalculator.CalculateFees(totalAmount);
+
+        //        // Calculate fees using dynamic percentage from event
+        //        var fees = FeeCalculator.CalculateFees(totalAmount, convenienceFeePercentage);
+
+        //        // Generate booking code
+        //        var bookingCode = $"ZTH{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
+
+        //        // Create booking in PENDING_PAYMENT status
+        //        var booking = new BookingModel
+        //        {
+        //            booking_code = bookingCode,
+        //            user_id = user.user_id,
+        //            event_id = request.EventId,
+        //            total_amount = totalAmount,
+        //            booking_amount = totalAmount,
+        //            convenience_fee = fees.convenienceFee,
+        //            gst_amount = fees.gstAmount,
+        //            final_amount = fees.finalAmount,
+        //            status = "pending_payment", // Status is pending payment, not confirmed
+        //            currency = "INR",
+        //            created_by = user.user_id.ToString(),
+        //            updated_by = user.user_id.ToString()
+        //        };
+
+        //        var bookingId = await _bookingRepository.CreateBookingAsync(booking);
+
+        //        if (bookingId > 0)
+        //        {
+        //            // Create booking seats (but these are just records, seats not deducted yet)
+        //            var bookingSeats = new List<BookingSeatModel>();
+        //            foreach (var seatSelection in request.SeatSelections)
+        //            {
+        //                var seatType = await _bookingRepository.GetSeatTypeByIdAsync(seatSelection.SeatTypeId);
+        //                var subtotal = seatType.price * seatSelection.Quantity;
+
+        //                var bookingSeat = new BookingSeatModel
+        //                {
+        //                    booking_id = bookingId,
+        //                    event_seat_type_inventory_id = seatSelection.SeatTypeId,
+        //                    quantity = seatSelection.Quantity,
+        //                    remaining_quantity = seatSelection.Quantity, // Initially same as quantity
+        //                    price_per_seat = seatType.price,
+        //                    subtotal = subtotal,
+        //                    created_by = user.user_id.ToString(),
+        //                    updated_by = user.user_id.ToString()
+        //                };
+
+        //                bookingSeats.Add(bookingSeat);
+        //            }
+
+        //            await _bookingRepository.CreateBookingSeatsAsync(bookingSeats);
+
+        //            // Now create Razorpay order - IMPORTANT: Use final_amount
+        //            var paymentRequest = new CreatePaymentOrderRequest
+        //            {
+        //                BookingId = bookingId,
+        //                Amount = fees.finalAmount,
+        //                Currency = "INR",
+        //                Notes = new Dictionary<string, string>
+        //                {
+        //                    { "eventId", request.EventId.ToString() },
+        //                    { "eventName", eventDetails.event_name },
+        //                    { "userId", user.user_id.ToString() },
+        //                    { "bookingCode", bookingCode },
+        //                    { "convenienceFeePercentage", convenienceFeePercentage.ToString() }
+        //                }
+        //            };
+
+        //            // Call the fixed CreatePaymentOrderAsync method
+        //            return await CreatePaymentOrderAsync(paymentRequest, userEmail);
+        //        }
+        //        else
+        //        {
+        //            // No need to release seats since we never reserved them
+        //            response.Status = "Failure";
+        //            response.Message = "Failed to create booking";
+        //            response.ErrorCode = "1";
+        //            return response;
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        response.Status = "Failure";
+        //        response.Message = $"Error creating booking with payment: {ex.Message}";
+        //        response.ErrorCode = "1";
+        //        return response;
+        //    }
+        //}
 
         private async Task ReleaseSeatsForFailedPayment(int bookingId)
         {

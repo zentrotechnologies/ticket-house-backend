@@ -62,6 +62,10 @@ namespace MODEL.Response
         public string mobile { get; set; }
         public string? qr_code { get; set; }
         public List<BookingSeatResponse> BookingSeats { get; set; } = new List<BookingSeatResponse>();
+        // Add to your existing BookingModel class
+        public int? coupon_id { get; set; }
+        public decimal discount_amount { get; set; } = 0;
+        public string coupon_code_applied { get; set; }
     }
 
     //public class BookingSeatResponse

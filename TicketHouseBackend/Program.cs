@@ -66,6 +66,7 @@ builder.Services.AddScoped<IEventArtistGalleryRepository, EventArtistGalleryRepo
 builder.Services.AddScoped<IUserEventsRepository, UserEventsRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<ICouponRepository, CouponRepository>();
 
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
@@ -80,6 +81,7 @@ builder.Services.AddScoped<IUserEventsService, UserEventsService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IQRCodeService, QRCodeService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<ICouponService, CouponService>();
 
 // File upload helper
 builder.Services.AddScoped<IFileUploadHelper, EventFileUploadHelper>();

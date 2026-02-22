@@ -98,6 +98,9 @@ namespace MODEL.Request
     {
         public int EventId { get; set; }
         public List<SeatSelection> SeatSelections { get; set; } = new List<SeatSelection>();
+        // Make these optional with default values
+        public string? CouponCode { get; set; } = null;  // Add ? to make nullable
+        public decimal DiscountAmount { get; set; } = 0;
     }
 
     public class BookingHistoryRequest

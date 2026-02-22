@@ -25,5 +25,6 @@ namespace DAL.Utilities
         public static string booking_seat = "booking_seat";
         public static string payment_history = DB_SCHEMA + "payment_history";
         public static string ticket_scan_history = DB_SCHEMA + "ticket_scan_history";
+        public static string coupons = DB_SCHEMA + "coupons";
     }
 }
