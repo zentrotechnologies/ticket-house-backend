@@ -908,11 +908,22 @@ namespace BAL.Services
                     var eventDetails = await _eventDetailsRepository.GetEventByIdAsync(updatedBookingDetails.event_id);
 
                     // Prepare thank you message
+                    //string thankYouMessage = $"Thank you for booking {updatedBookingDetails.event_name}!\n\n" +
+                    //                       $"Your booking #{updatedBookingDetails.booking_code} has been confirmed.\n" +
+                    //                       $"Date: {updatedBookingDetails.event_date:dd MMM yyyy}\n" +
+                    //                       $"Time: {updatedBookingDetails.start_time} - {updatedBookingDetails.end_time}\n" +
+                    //                       $"Venue: {updatedBookingDetails.location}\n\n" +
+                    //                       $"Please present this QR code at the venue entry.";
+
+                    // Prepare thank you message (include coupon info if applied)
                     string thankYouMessage = $"Thank you for booking {updatedBookingDetails.event_name}!\n\n" +
                                            $"Your booking #{updatedBookingDetails.booking_code} has been confirmed.\n" +
                                            $"Date: {updatedBookingDetails.event_date:dd MMM yyyy}\n" +
                                            $"Time: {updatedBookingDetails.start_time} - {updatedBookingDetails.end_time}\n" +
                                            $"Venue: {updatedBookingDetails.location}\n\n" +
+                                           (updatedBookingDetails.discount_amount > 0
+                                            ? $"Coupon Applied: {updatedBookingDetails.coupon_code_applied} (Discount: ₹{updatedBookingDetails.discount_amount})\n\n"
+                                            : "") +
                                            $"Please present this QR code at the venue entry.";
 
                     var qrResponse = new BookingQRResponse
@@ -921,7 +932,8 @@ namespace BAL.Services
                         BookingCode = updatedBookingDetails.booking_code,
                         EventId = updatedBookingDetails.event_id,
                         EventName = eventDetails?.event_name,
-                        TotalAmount = updatedBookingDetails.total_amount,
+                        //TotalAmount = updatedBookingDetails.total_amount,
+                        TotalAmount = updatedBookingDetails.final_amount,
                         Status = "confirmed",
                         CreatedOn = updatedBookingDetails.created_on,
                         QRCodeBase64 = qrCodeBase64,
@@ -2145,7 +2157,43 @@ namespace BAL.Services
                 }
 
                 string geoMapUrl = bookingDetails.geo_map_url ?? "#"; // Fallback if not available
-                                                                      // Log the final value being used
+
+                // GENERATE COUPON SECTION HTML - CONDITIONAL
+                string couponSectionHtml = "";
+
+                // Check if coupon was applied (discount_amount > 0)
+                if (bookingDetails.discount_amount > 0 && !string.IsNullOrEmpty(bookingDetails.coupon_code_applied))
+                {
+                    couponSectionHtml = $@"
+                    <!-- Coupon Applied Section -->
+                    <tr>
+                        <td style=""padding: 4px 0 8px 0;"">
+                            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" border=""0"">
+                                <tr>
+                                    <td style=""font-size: 14px; color: #10b981; padding-right: 20px;"">
+                                        Coupon Applied (<span style=""font-weight: 600;"">{bookingDetails.coupon_code_applied}</span>):
+                                    </td>
+                                    <td style=""font-size: 14px; color: #10b981; text-align: right; font-weight: 500;"">
+                                        - ₹{bookingDetails.discount_amount:0.00}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+            
+                    <!-- Optional spacer row for better visual separation -->
+                    <tr>
+                        <td style=""padding: 0 0 4px 0;"">
+                            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" border=""0"">
+                                <tr>
+                                    <td style=""border-top: 1px dashed #eee;"" colspan=""2""></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>";
+                }
+
+                // Log the final value being used
                 _logger.LogInformation($"Final GeoMapUrl being used in template: {geoMapUrl}");
 
                 // Replace placeholders - using "0.00" format to show exact decimals without rounding off
@@ -2161,6 +2209,7 @@ namespace BAL.Services
                     .Replace("{{SubtotalTotal}}", subtotalTotal.ToString("0.00"))  // New placeholder for subtotal total
                     .Replace("{{ConvenienceFee}}", bookingDetails.convenience_fee.ToString("0.00"))
                     .Replace("{{GSTAmount}}", bookingDetails.gst_amount.ToString("0.00"))
+                    .Replace("{{CouponAppliedSection}}", couponSectionHtml)  // This will be empty if no coupon
                     .Replace("{{FinalAmount}}", bookingDetails.final_amount.ToString("0.00"))
                     .Replace("{{CurrentYear}}", DateTime.Now.Year.ToString());
 
@@ -2249,6 +2298,9 @@ namespace BAL.Services
                                 TotalAmount = bookingDetails.total_amount,
                                 Status = bookingDetails.status,
                                 BookingDate = bookingDetails.created_on,
+                                // Include coupon details
+                                CouponCode = bookingDetails.coupon_code_applied,
+                                DiscountAmount = bookingDetails.discount_amount,
                                 Seats = bookingDetails.BookingSeats.Select(bs => new QRSeatDetail
                                 {
                                     SeatType = bs.seat_name,

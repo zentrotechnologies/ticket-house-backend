@@ -55,6 +55,9 @@ namespace BAL.Services
                     FinalAmount = bookingDetails.final_amount,
                     Status = bookingDetails.status,
                     BookingDate = bookingDetails.created_on.ToString("yyyy-MM-dd HH:mm:ss"),
+                    // Add coupon details
+                    CouponCode = bookingDetails.coupon_code_applied,
+                    DiscountAmount = bookingDetails.discount_amount,
                     Seats = bookingDetails.BookingSeats.Select(bs => new
                     {
                         SeatType = bs.seat_name,

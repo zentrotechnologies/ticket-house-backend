@@ -152,6 +152,9 @@ namespace MODEL.Response
         public decimal TotalAmount { get; set; }
         public string Status { get; set; }
         public DateTime BookingDate { get; set; }
+        // Add coupon fields
+        public string CouponCode { get; set; }
+        public decimal DiscountAmount { get; set; }
         public List<QRSeatDetail> Seats { get; set; } = new List<QRSeatDetail>();
         public string Message { get; set; }
     }

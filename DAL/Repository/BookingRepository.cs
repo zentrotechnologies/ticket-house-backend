@@ -180,11 +180,11 @@ namespace DAL.Repository
             INSERT INTO {this.booking} 
             (booking_code, user_id, event_id, total_amount, booking_amount, 
              convenience_fee, gst_amount, final_amount, status, 
-             created_by, updated_by, currency)
+             created_by, updated_by, currency, coupon_id, discount_amount, coupon_code_applied)
             VALUES 
             (@booking_code, @user_id, @event_id, @total_amount, @booking_amount,
              @convenience_fee, @gst_amount, @final_amount, @status, 
-             @created_by, @updated_by, @currency)
+             @created_by, @updated_by, @currency, @coupon_id, @discount_amount, @coupon_code_applied)
             RETURNING booking_id";
 
             var bookingId = await connection.ExecuteScalarAsync<int>(query, new
@@ -200,7 +200,11 @@ namespace DAL.Repository
                 status = booking.status,
                 created_by = booking.created_by,
                 updated_by = booking.updated_by,
-                currency = booking.currency
+                currency = booking.currency,
+                // Coupon fields - pass null if not applied
+                coupon_id = booking.coupon_id,
+                discount_amount = booking.discount_amount,
+                coupon_code_applied = booking.coupon_code_applied
             });
 
             return bookingId;
@@ -489,6 +493,9 @@ namespace DAL.Repository
                 b.status,
                 b.created_on,
                 b.qr_code,
+                b.coupon_id,              
+                b.discount_amount,         
+                b.coupon_code_applied,    
                 e.event_name,
                 e.event_date,
                 e.start_time,
