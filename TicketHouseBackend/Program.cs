@@ -9,6 +9,13 @@ using Microsoft.OpenApi.Models;
 using MODEL.Configuration;
 using System.Text;
 
+// Create wwwroot directory before builder
+var wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+if (!Directory.Exists(wwwrootPath))
+{
+    Directory.CreateDirectory(wwwrootPath);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

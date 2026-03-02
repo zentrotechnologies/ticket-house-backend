@@ -1252,7 +1252,8 @@ namespace DAL.Repository
                         scan_type = "partial",
                         scan_status = "success",
                         device_info = request.DeviceInfo,
-                        remarks = $"Partial scan for {seatNameForLog}"
+                        remarks = $"Partial scan for {seatNameForLog}",
+                        scan_time = DateTime.UtcNow.AddHours(5.5) // Add this line for Indian time
                     });
 
                     scanResults.Add(new SeatScanResult
@@ -1289,7 +1290,8 @@ namespace DAL.Repository
                     BookingCode = bookingInfo != default ? bookingInfo.Item1 : "",
                     EventName = bookingInfo != default ? bookingInfo.Item2 : "",
                     CustomerName = bookingInfo != default ? $"{bookingInfo.Item3} {bookingInfo.Item4}" : "",
-                    ScanTime = DateTime.UtcNow,
+                    //ScanTime = DateTime.UtcNow,
+                    ScanTime = DateTime.UtcNow.AddHours(5.5), // Also set response scan time to Indian time
                     ScanResults = scanResults,
                     Summary = CalculateScanSummary(scanResults)
                 };
@@ -1386,10 +1388,10 @@ namespace DAL.Repository
         {
             var query = $@"
             INSERT INTO ticket_scan_history 
-            (booking_id, booking_seat_id, scanned_quantity, scanned_by, 
+            (booking_id, booking_seat_id, scanned_quantity, scanned_by, scan_time,
              scan_type, scan_status, remarks, device_info)
             VALUES 
-            (@booking_id, @booking_seat_id, @scanned_quantity, @scanned_by,
+            (@booking_id, @booking_seat_id, @scanned_quantity, @scanned_by, @scan_time,
              @scan_type, @scan_status, @remarks, @device_info)";
 
             await connection.ExecuteAsync(query, scanHistory, transaction);
