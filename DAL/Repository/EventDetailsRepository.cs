@@ -52,6 +52,7 @@ namespace DAL.Repository
         Task<int> UpdateEventSeatTypeAvailabilityAsync(int seatTypeId, int quantityChange, string updatedBy);
         Task<int> DeleteEventSeatTypeAsync(int seatTypeId, string updatedBy);
         Task<int> DeleteAllEventSeatTypesAsync(int eventId, string updatedBy);
+        Task<IEnumerable<ActiveEventResponse>> GetActiveEventsByUserIdAsync(string userId);
     }
     public class EventDetailsRepository: IEventDetailsRepository
     {
@@ -960,6 +961,68 @@ namespace DAL.Repository
             });
 
             return affectedRows;
+        }
+
+        public async Task<IEnumerable<ActiveEventResponse>> GetActiveEventsByUserIdAsync(string userId)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            // Get today's date range (from midnight to midnight)
+            var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+
+            var query = $@"
+            SELECT 
+                e.event_id,
+                e.event_name,
+                e.event_date,
+                e.start_time,
+                e.end_time,
+                e.location,
+                e.full_address,
+                e.banner_image,
+                e.status,
+                e.min_price,
+                e.max_price,
+                e.no_of_seats
+            FROM {events} e
+            WHERE e.active = 1 
+                AND e.event_date = @Today
+                AND e.created_by = @UserId
+            ORDER BY e.start_time ASC";
+
+            var activeEvents = await connection.QueryAsync<ActiveEventResponse>(query, new
+            {
+                Today = today,
+                UserId = userId
+            });
+
+            var eventList = activeEvents.ToList();
+
+            // For each event, get its seat types
+            foreach (var evt in eventList)
+            {
+                var seatTypesQuery = $@"
+                SELECT 
+                    event_seat_type_inventory_id as seat_type_id,
+                    seat_name,
+                    price,
+                    total_seats,
+                    available_seats
+                FROM {event_seat_type_inventory}
+                WHERE event_id = @EventId 
+                    AND active = 1
+                ORDER BY price DESC";
+
+                var seatTypes = await connection.QueryAsync<EventSeatTypeInfo>(
+                    seatTypesQuery,
+                    new { EventId = evt.event_id }
+                );
+
+                evt.seat_types = seatTypes.ToList();
+            }
+
+            return eventList;
         }
     }
 }

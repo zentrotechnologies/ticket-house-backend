@@ -976,5 +976,157 @@ namespace TicketHouseBackend.Controllers
             using var client = new HttpClient();
             return await client.GetStringAsync("https://api.ipify.org");
         }
+
+        /// <summary>
+        /// Get comprehensive booking history for a specific event
+        /// Includes all bookings, seat details, scan history, payment details, and coupon information
+        /// </summary>
+        /// <param name="eventId">The event ID to fetch booking history for</param>
+        /// <returns>Comprehensive booking history with summary statistics</returns>
+        [HttpGet("GetEventBookingHistory/{eventId}")]
+        [AllowAnonymous]
+        //[Authorize(Roles = "Admin,Organizer")] // Restrict to admin and organizers only
+        public async Task<ActionResult<CommonResponseModel<EventBookingHistoryResponse>>> GetEventBookingHistory(int eventId)
+        {
+            try
+            {
+                // Validate event ID
+                if (eventId <= 0)
+                {
+                    return BadRequest(new CommonResponseModel<EventBookingHistoryResponse>
+                    {
+                        Status = "Failure",
+                        Message = "Valid event ID is required",
+                        ErrorCode = "400"
+                    });
+                }
+
+                // Optional: Check if the current user has permission to view this event's bookings
+                // This would require getting the organizer_id from the event and comparing with current user
+                var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+                var currentUserId = User.FindFirst("userId")?.Value;
+
+                // For organizers, you might want to verify they own this event
+                // This requires additional logic to fetch event organizer_id and compare
+
+                var result = await _bookingService.GetEventBookingHistoryAsync(eventId);
+
+                if (result.Status == "Success")
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return StatusCode(int.Parse(result.ErrorCode), result);
+                }
+            }
+            catch (Exception ex)
+            {
+                //_logger.LogError(ex, "Error in GetEventBookingHistory for EventId: {EventId}", eventId);
+
+                return StatusCode(500, new CommonResponseModel<EventBookingHistoryResponse>
+                {
+                    Status = "Failure",
+                    Message = $"An error occurred: {ex.Message}",
+                    ErrorCode = "500"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Simplified version - Get booking summary for an event (without detailed scan history)
+        /// Useful for dashboard views
+        /// </summary>
+        [HttpGet("GetEventBookingSummary/{eventId}")]
+        [AllowAnonymous]
+        //[Authorize(Roles = "Admin,Organizer")]
+        public async Task<ActionResult<CommonResponseModel<EventBookingSummary>>> GetEventBookingSummary(int eventId)
+        {
+            try
+            {
+                if (eventId <= 0)
+                {
+                    return BadRequest(new CommonResponseModel<EventBookingSummary>
+                    {
+                        Status = "Failure",
+                        Message = "Valid event ID is required",
+                        ErrorCode = "400"
+                    });
+                }
+
+                var result = await _bookingService.GetEventBookingHistoryAsync(eventId);
+
+                if (result.Status == "Success")
+                {
+                    var summaryResponse = new CommonResponseModel<EventBookingSummary>
+                    {
+                        Status = result.Status,
+                        Message = result.Message,
+                        ErrorCode = result.ErrorCode,
+                        Data = result.Data?.summary
+                    };
+
+                    return Ok(summaryResponse);
+                }
+
+                return StatusCode(int.Parse(result.ErrorCode), result);
+            }
+            catch (Exception ex)
+            {
+                //_logger.LogError(ex, "Error in GetEventBookingSummary for EventId: {EventId}", eventId);
+
+                return StatusCode(500, new CommonResponseModel<EventBookingSummary>
+                {
+                    Status = "Failure",
+                    Message = $"An error occurred: {ex.Message}",
+                    ErrorCode = "500"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Get paginated ticket scan history for a specific event
+        /// </summary>
+        /// <param name="eventId">The ID of the event</param>
+        /// <param name="pageNumber">Page number (default: 1)</param>
+        /// <param name="pageSize">Page size (default: 10, max: 100)</param>
+        /// <returns>Event details and paginated scan history</returns>
+        [HttpGet("TicketScanHistoryByEventId")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetTicketScanHistoryByEventId(
+            [FromQuery] int eventId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            if (eventId <= 0)
+            {
+                return BadRequest(new CommonResponseModel<object>
+                {
+                    Status = "Failure",
+                    Message = "Valid event ID is required",
+                    ErrorCode = "400"
+                });
+            }
+
+            // Validate pagination parameters
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+            if (pageSize > 100) pageSize = 100;
+
+            var result = await _bookingService.GetTicketScanHistoryByEventIdAsync(eventId, pageNumber, pageSize);
+
+            if (result.Status == "Success")
+            {
+                return Ok(result);
+            }
+            else if (result.ErrorCode == "404")
+            {
+                return NotFound(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
     }
 }

@@ -1024,5 +1024,72 @@ namespace TicketHouseBackend.Controllers.Masters
                 };
             }
         }
+
+        /// <summary>
+        /// Get today's active events for the logged-in user
+        /// </summary>
+        /// <param name="userId">Optional user ID. If not provided, uses the logged-in user's ID</param>
+        /// <returns>List of today's events created by the user</returns>
+        [HttpGet("GetActiveEventByUserId")]
+        public async Task<IActionResult> GetActiveEventByUserId([FromQuery] string userId = null)
+        {
+            try
+            {
+                // If userId is not provided, try to get from JWT token
+                if (string.IsNullOrEmpty(userId))
+                {
+                    // Try to get user ID from JWT token claims
+                    var userIdClaim = User?.FindFirst("userId")?.Value;
+                    if (!string.IsNullOrEmpty(userIdClaim))
+                    {
+                        userId = userIdClaim;
+                    }
+                    else
+                    {
+                        // Try to get user email from JWT token
+                        var userEmail = User?.Identity?.Name;
+                        if (!string.IsNullOrEmpty(userEmail))
+                        {
+                            // You might need to convert email to user ID here
+                            // For now, we'll pass "current" to indicate we need to get from context
+                            userId = "current";
+                        }
+                        else
+                        {
+                            return BadRequest(new CommonResponseModel<object>
+                            {
+                                Status = "Failure",
+                                Message = "User ID is required or user must be logged in",
+                                ErrorCode = "400"
+                            });
+                        }
+                    }
+                }
+
+                var result = await _eventDetailsService.GetActiveEventsByUserIdAsync(userId);
+
+                if (result.Status == "Success")
+                {
+                    return Ok(result);
+                }
+                else if (result.ErrorCode == "401")
+                {
+                    return Unauthorized(result);
+                }
+                else
+                {
+                    return StatusCode(500, result);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new CommonResponseModel<object>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                });
+            }
+        }
     }
 }

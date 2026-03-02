@@ -33,6 +33,7 @@ namespace BAL.Services
         Task<CommonResponseModel<List<EventSeatTypeInventoryModel>>> GetEventSeatTypesAsync(int eventId);
         Task<CommonResponseModel<bool>> UpdateEventSeatTypeAsync(EventSeatTypeInventoryModel seatType);
         Task<CommonResponseModel<bool>> DeleteEventSeatTypeAsync(int seatTypeId, string updatedBy);
+        Task<CommonResponseModel<ActiveEventsListResponse>> GetActiveEventsByUserIdAsync(string userId);
     }
     public class EventDetailsService: IEventDetailsService
     {
@@ -687,6 +688,59 @@ namespace BAL.Services
                 response.Message = $"Error deleting seat type: {ex.Message}";
                 response.ErrorCode = "1";
                 response.Data = false;
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<ActiveEventsListResponse>> GetActiveEventsByUserIdAsync(string userId)
+        {
+            var response = new CommonResponseModel<ActiveEventsListResponse>();
+
+            try
+            {
+                if (string.IsNullOrEmpty(userId))
+                {
+                    response.Status = "Failure";
+                    response.Message = "User ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                // Get current user ID from JWT token if not provided
+                if (userId == "current")
+                {
+                    var currentUserId = GetCurrentUserId();
+                    if (currentUserId == Guid.Empty)
+                    {
+                        response.Status = "Failure";
+                        response.Message = "User not authenticated";
+                        response.ErrorCode = "401";
+                        return response;
+                    }
+                    userId = currentUserId.ToString();
+                }
+
+                var events = await _eventDetailsRepository.GetActiveEventsByUserIdAsync(userId);
+
+                var eventList = events.ToList();
+
+                response.Status = "Success";
+                response.Message = eventList.Any()
+                    ? $"Found {eventList.Count} active event(s) for today"
+                    : "No active events found for today";
+                response.ErrorCode = "0";
+                response.Data = new ActiveEventsListResponse
+                {
+                    total_events = eventList.Count,
+                    events = eventList
+                };
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error retrieving active events: {ex.Message}";
+                response.ErrorCode = "1";
             }
 
             return response;

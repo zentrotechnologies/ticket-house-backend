@@ -53,4 +53,36 @@ namespace MODEL.Response
         public DateTime? FirstBookingDate { get; set; }
         public DateTime? LastBookingDate { get; set; }
     }
+
+    public class ActiveEventResponse
+    {
+        public int event_id { get; set; }
+        public string event_name { get; set; }
+        public DateTime event_date { get; set; }
+        public TimeSpan start_time { get; set; }
+        public TimeSpan end_time { get; set; }
+        public string location { get; set; }
+        public string full_address { get; set; }
+        public string banner_image { get; set; }
+        public string status { get; set; }
+        public decimal? min_price { get; set; }
+        public decimal? max_price { get; set; }
+        public int? no_of_seats { get; set; }
+        public List<EventSeatTypeInfo> seat_types { get; set; }
+    }
+
+    public class EventSeatTypeInfo
+    {
+        public int seat_type_id { get; set; }
+        public string seat_name { get; set; }
+        public decimal price { get; set; }
+        public int total_seats { get; set; }
+        public int available_seats { get; set; }
+    }
+
+    public class ActiveEventsListResponse
+    {
+        public int total_events { get; set; }
+        public List<ActiveEventResponse> events { get; set; }
+    }
 }

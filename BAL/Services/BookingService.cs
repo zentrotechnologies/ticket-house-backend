@@ -45,6 +45,11 @@ namespace BAL.Services
         Task<CommonResponseModel<BookingDetailedResponse>> GetBookingDetailsByIdAsync(int bookingId);
         Task<CommonResponseModel<EventSummaryResponse>> GetEventSummaryByEventIdAsync(int eventId);
         Task<PagedBookingHistoryResponse> GetPagedBookingHistoryByUserIdAsync(BookingHistoryRequest request);
+        /// <summary>
+        /// Get comprehensive booking history for a specific event
+        /// </summary>
+        Task<CommonResponseModel<EventBookingHistoryResponse>> GetEventBookingHistoryAsync(int eventId);
+        Task<CommonResponseModel<TicketScanHistoryByEventResponse>> GetTicketScanHistoryByEventIdAsync(int eventId, int pageNumber = 1, int pageSize = 10);
     }
     public class BookingService: IBookingService
     {
@@ -2777,6 +2782,153 @@ namespace BAL.Services
                     PageSize = request.PageSize
                 };
             }
+        }
+
+        public async Task<CommonResponseModel<EventBookingHistoryResponse>> GetEventBookingHistoryAsync(int eventId)
+        {
+            var response = new CommonResponseModel<EventBookingHistoryResponse>();
+
+            try
+            {
+                // Validate event ID
+                if (eventId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid event ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                // Check if event exists
+                var eventExists = await _eventDetailsRepository.GetEventByIdAsync(eventId);
+                if (eventExists == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Event not found";
+                    response.ErrorCode = "404";
+                    return response;
+                }
+
+                // Get booking history
+                var bookingHistory = await _bookingRepository.GetEventBookingHistoryAsync(eventId);
+
+                if (bookingHistory != null && bookingHistory.bookings.Any())
+                {
+                    response.Status = "Success";
+                    response.Message = "Event booking history retrieved successfully";
+                    response.ErrorCode = "0";
+                    response.Data = bookingHistory;
+                }
+                else
+                {
+                    response.Status = "Success";
+                    response.Message = "No bookings found for this event";
+                    response.ErrorCode = "0";
+                    response.Data = new EventBookingHistoryResponse
+                    {
+                        event_id = eventId,
+                        event_name = eventExists.event_name,
+                        event_date = eventExists.event_date,
+                        start_time = eventExists.start_time,
+                        end_time = eventExists.end_time,
+                        location = eventExists.location,
+                        bookings = new System.Collections.Generic.List<EventBookingDetail>(),
+                        summary = new EventBookingSummary
+                        {
+                            bookings_by_status = new System.Collections.Generic.Dictionary<string, int>(),
+                            bookings_by_payment_status = new System.Collections.Generic.Dictionary<string, int>()
+                        }
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving booking history for EventId: {EventId}", eventId);
+
+                response.Status = "Failure";
+                response.Message = $"Error retrieving booking history: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
+        }
+
+        public async Task<CommonResponseModel<TicketScanHistoryByEventResponse>> GetTicketScanHistoryByEventIdAsync(int eventId, int pageNumber = 1, int pageSize = 10)
+        {
+            var response = new CommonResponseModel<TicketScanHistoryByEventResponse>();
+
+            try
+            {
+                // Validate inputs
+                if (eventId <= 0)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Valid event ID is required";
+                    response.ErrorCode = "400";
+                    return response;
+                }
+
+                if (pageNumber < 1) pageNumber = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 100) pageSize = 100; // Max limit
+
+                // Check if event exists
+                var eventExists = await _eventDetailsRepository.GetEventByIdAsync(eventId);
+                if (eventExists == null)
+                {
+                    response.Status = "Failure";
+                    response.Message = "Event not found";
+                    response.ErrorCode = "404";
+                    return response;
+                }
+
+                // Get scan history
+                var scanHistory = await _bookingRepository.GetTicketScanHistoryByEventIdAsync(eventId, pageNumber, pageSize);
+
+                if (scanHistory != null)
+                {
+                    response.Status = "Success";
+                    response.Message = "Ticket scan history retrieved successfully";
+                    response.ErrorCode = "0";
+                    response.Data = scanHistory;
+                }
+                else
+                {
+                    response.Status = "Success";
+                    response.Message = "No scan history found for this event";
+                    response.ErrorCode = "0";
+                    response.Data = new TicketScanHistoryByEventResponse
+                    {
+                        EventDetails = new EventDetails
+                        {
+                            event_id = eventExists.event_id,
+                            event_name = eventExists.event_name,
+                            event_date = eventExists.event_date,
+                            start_time = eventExists.start_time,
+                            end_time = eventExists.end_time,
+                            location = eventExists.location
+                        },
+                        ScanHistory = new PaginatedScanHistory
+                        {
+                            current_page = pageNumber,
+                            page_size = pageSize,
+                            total_pages = 0,
+                            total_records = 0,
+                            data = new List<TicketScanHistoryDetail>()
+                        }
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving ticket scan history for EventId: {eventId}");
+
+                response.Status = "Failure";
+                response.Message = $"Error retrieving ticket scan history: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
         }
     }
 }

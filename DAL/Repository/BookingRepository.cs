@@ -52,6 +52,12 @@ namespace DAL.Repository
         Task<EventSummaryResponse> GetEventSummaryByEventIdAsync(int eventId);
         Task<PagedBookingHistoryResponse> GetPagedBookingHistoryByUserIdAsync(BookingHistoryRequest request);
         Task<int> UpdateBookingQRCodeAsync(int bookingId, string qrCodeBase64, string updatedBy);
+        /// <summary>
+        /// Get comprehensive booking history for a specific event
+        /// Includes all bookings, seat details, scan history, payment details, and coupon information
+        /// </summary>
+        Task<EventBookingHistoryResponse> GetEventBookingHistoryAsync(int eventId);
+        Task<TicketScanHistoryByEventResponse> GetTicketScanHistoryByEventIdAsync(int eventId, int pageNumber, int pageSize);
     }
     public class BookingRepository: IBookingRepository
     {
@@ -61,6 +67,8 @@ namespace DAL.Repository
         private readonly string event_seat_type_inventory = DatabaseConfiguration.event_seat_type_inventory;
         private readonly string events = DatabaseConfiguration.events;
         private readonly string Users = DatabaseConfiguration.Users;
+        private readonly string coupons = DatabaseConfiguration.coupons;
+        private readonly string ticket_scan_history = DatabaseConfiguration.ticket_scan_history;
 
         public BookingRepository(ITHDBConnection dbConnection)
         {
@@ -1926,6 +1934,415 @@ namespace DAL.Repository
                 qr_code = qrCodeBase64,
                 updated_by = updatedBy
             });
+        }
+
+        public async Task<EventBookingHistoryResponse> GetEventBookingHistoryAsync(int eventId)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            var multiQuery = $@"
+            -- 1. Event Information
+            SELECT 
+                e.event_id,
+                e.event_name,
+                e.event_date,
+                e.start_time,
+                e.end_time,
+                e.location
+            FROM {events} e
+            WHERE e.event_id = @EventId AND e.active = 1;
+
+            -- 2. All Bookings for this event with customer and payment details
+            SELECT 
+                b.booking_id,
+                b.booking_code,
+                b.created_on as booking_date,
+                b.status as booking_status,
+                b.user_id,
+                u.first_name,
+                u.last_name,
+                u.email as customer_email,
+                u.mobile as customer_mobile,
+                b.total_amount,
+                b.booking_amount,
+                b.convenience_fee,
+                b.gst_amount,
+                b.final_amount,
+                b.currency,
+                b.payment_method,
+                b.payment_status,
+                b.payment_date,
+                b.transaction_id,
+                b.razorpay_order_id,
+                b.razorpay_payment_id,
+                b.coupon_id,
+                b.coupon_code_applied as coupon_code,
+                b.discount_amount
+            FROM {booking} b
+            INNER JOIN {Users} u ON b.user_id = u.user_id AND u.active = 1
+            WHERE b.event_id = @EventId 
+                AND b.active = 1
+            ORDER BY b.created_on DESC;
+
+            -- 3. Booking Seats with seat names and scan counts for all bookings in this event
+            SELECT 
+                bs.booking_seat_id,
+                bs.booking_id,
+                bs.event_seat_type_inventory_id as seat_type_id,
+                esti.seat_name,
+                bs.quantity as quantity_booked,
+                bs.scanned_quantity as quantity_scanned,
+                bs.remaining_quantity as quantity_remaining,
+                bs.price_per_seat,
+                bs.subtotal,
+                bs.last_scan_time,
+                bs.scanned_by as last_scanned_by
+            FROM {booking_seat} bs
+            INNER JOIN {booking} b ON bs.booking_id = b.booking_id
+            INNER JOIN {event_seat_type_inventory} esti ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id
+            WHERE b.event_id = @EventId 
+                AND b.active = 1 
+                AND bs.active = 1
+                AND esti.active = 1;
+
+            -- 4. Ticket Scan History for all bookings in this event
+            SELECT 
+                tsh.scan_id,
+                tsh.booking_id,
+                tsh.booking_seat_id,
+                tsh.scanned_quantity,
+                tsh.scan_time,
+                tsh.scan_type,
+                tsh.scan_status,
+                tsh.remarks,
+                tsh.device_info,
+                bs.event_seat_type_inventory_id as seat_type_id,
+                esti.seat_name,
+                CONCAT(u.first_name, ' ', u.last_name) as scanned_by_name
+            FROM {ticket_scan_history} tsh
+            INNER JOIN {booking_seat} bs ON tsh.booking_seat_id = bs.booking_seat_id
+            INNER JOIN {booking} b ON tsh.booking_id = b.booking_id
+            INNER JOIN {event_seat_type_inventory} esti ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id
+            LEFT JOIN {Users} u ON tsh.scanned_by = u.user_id::text
+            WHERE b.event_id = @EventId
+            ORDER BY tsh.scan_time DESC;";
+
+            using var multi = await connection.QueryMultipleAsync(multiQuery, new { EventId = eventId });
+
+            // Read event info
+            var eventInfo = await multi.ReadFirstOrDefaultAsync<dynamic>();
+            if (eventInfo == null)
+                return null;
+
+            // Read all bookings
+            var bookingsData = await multi.ReadAsync<dynamic>();
+
+            // Read all booking seats
+            var seatsData = await multi.ReadAsync<dynamic>();
+
+            // Read all scan history
+            var scanHistoryData = await multi.ReadAsync<dynamic>();
+
+            // Process the data to build the response
+            return BuildEventBookingHistoryResponse(eventInfo, bookingsData, seatsData, scanHistoryData);
+        }
+
+        private EventBookingHistoryResponse BuildEventBookingHistoryResponse(
+            dynamic eventInfo,
+            IEnumerable<dynamic> bookingsData,
+            IEnumerable<dynamic> seatsData,
+            IEnumerable<dynamic> scanHistoryData)
+        {
+            var response = new EventBookingHistoryResponse
+            {
+                event_id = eventInfo.event_id,
+                event_name = eventInfo.event_name,
+                event_date = eventInfo.event_date,
+                start_time = eventInfo.start_time,
+                end_time = eventInfo.end_time,
+                location = eventInfo.location,
+                bookings = new List<EventBookingDetail>(),
+                summary = new EventBookingSummary
+                {
+                    bookings_by_status = new Dictionary<string, int>(),
+                    bookings_by_payment_status = new Dictionary<string, int>()
+                }
+            };
+
+            // Group seats by booking_id
+            var seatsByBooking = seatsData
+                .GroupBy(s => (int)s.booking_id)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Group scan history by booking_id
+            var scansByBooking = scanHistoryData
+                .GroupBy(s => (int)s.booking_id)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Process each booking
+            foreach (var bookingData in bookingsData)
+            {
+                int bookingId = bookingData.booking_id;
+
+                // Get seats for this booking
+                var bookingSeats = seatsByBooking.ContainsKey(bookingId)
+                    ? seatsByBooking[bookingId]
+                    : new List<dynamic>();
+
+                // Get scan history for this booking
+                var bookingScans = scansByBooking.ContainsKey(bookingId)
+                    ? scansByBooking[bookingId]
+                    : new List<dynamic>();
+
+                // Build seat details
+                var seatDetails = new List<BookingSeatDetail>();
+                int totalSeatsBooked = 0;
+                int totalSeatsScanned = 0;
+                decimal totalSeatAmount = 0;
+
+                foreach (var seat in bookingSeats)
+                {
+                    int quantityBooked = seat.quantity_booked;
+                    int quantityScanned = seat.quantity_scanned;
+
+                    totalSeatsBooked += quantityBooked;
+                    totalSeatsScanned += quantityScanned;
+                    totalSeatAmount += seat.subtotal;
+
+                    seatDetails.Add(new BookingSeatDetail
+                    {
+                        booking_seat_id = seat.booking_seat_id,
+                        seat_type_id = seat.seat_type_id,
+                        seat_name = seat.seat_name,
+                        quantity_booked = quantityBooked,
+                        quantity_scanned = quantityScanned,
+                        quantity_remaining = seat.quantity_remaining,
+                        price_per_seat = seat.price_per_seat,
+                        subtotal = seat.subtotal,
+                        last_scan_time = seat.last_scan_time,
+                        last_scanned_by = seat.last_scanned_by,
+                        is_fully_scanned = quantityScanned >= quantityBooked
+                    });
+                }
+
+                int totalSeatsRemaining = totalSeatsBooked - totalSeatsScanned;
+                bool isFullyScanned = totalSeatsRemaining == 0;
+                bool isPartiallyScanned = totalSeatsScanned > 0 && totalSeatsRemaining > 0;
+
+                // Build scan history info
+                var scanHistoryList = new List<TicketScanHistoryInfo>();
+                var scannedByUsers = new HashSet<string>();
+                DateTime? firstScanTime = null;
+                DateTime? lastScanTime = null;
+
+                foreach (var scan in bookingScans)
+                {
+                    if (!firstScanTime.HasValue || scan.scan_time < firstScanTime)
+                        firstScanTime = scan.scan_time;
+
+                    if (!lastScanTime.HasValue || scan.scan_time > lastScanTime)
+                        lastScanTime = scan.scan_time;
+
+                    if (!string.IsNullOrEmpty(scan.scanned_by_name))
+                        scannedByUsers.Add(scan.scanned_by_name);
+
+                    scanHistoryList.Add(new TicketScanHistoryInfo
+                    {
+                        scan_id = scan.scan_id,
+                        booking_seat_id = scan.booking_seat_id,
+                        seat_name = scan.seat_name,
+                        scanned_quantity = scan.scanned_quantity,
+                        scan_time = scan.scan_time,
+                        scanned_by_name = scan.scanned_by_name,
+                        scan_type = scan.scan_type,
+                        scan_status = scan.scan_status,
+                        remarks = scan.remarks,
+                        device_info = scan.device_info
+                    });
+                }
+
+                // Build booking detail
+                var bookingDetail = new EventBookingDetail
+                {
+                    booking_id = bookingId,
+                    booking_code = bookingData.booking_code,
+                    booking_date = bookingData.booking_date,
+                    booking_status = bookingData.booking_status,
+                    user_id = bookingData.user_id,
+                    customer_name = $"{bookingData.first_name} {bookingData.last_name}",
+                    customer_email = bookingData.customer_email,
+                    customer_mobile = bookingData.customer_mobile,
+                    total_amount = bookingData.total_amount,
+                    booking_amount = bookingData.booking_amount,
+                    convenience_fee = bookingData.convenience_fee,
+                    gst_amount = bookingData.gst_amount,
+                    final_amount = bookingData.final_amount,
+                    currency = bookingData.currency,
+                    payment_method = bookingData.payment_method,
+                    payment_status = bookingData.payment_status,
+                    payment_date = bookingData.payment_date,
+                    transaction_id = bookingData.transaction_id,
+                    razorpay_order_id = bookingData.razorpay_order_id,
+                    razorpay_payment_id = bookingData.razorpay_payment_id,
+                    coupon_id = bookingData.coupon_id,
+                    coupon_code = bookingData.coupon_code,
+                    discount_amount = bookingData.discount_amount,
+                    seat_summary = new BookingSeatSummary
+                    {
+                        total_seats_booked = totalSeatsBooked,
+                        total_seats_scanned = totalSeatsScanned,
+                        total_seats_remaining = totalSeatsRemaining,
+                        total_seat_amount = totalSeatAmount,
+                        is_fully_scanned = isFullyScanned,
+                        is_partially_scanned = isPartiallyScanned,
+                        scan_percentage = totalSeatsBooked > 0
+                            ? Math.Round((decimal)totalSeatsScanned / totalSeatsBooked * 100, 2)
+                            : 0
+                    },
+                    seat_details = seatDetails,
+                    scan_info = new BookingScanInfo
+                    {
+                        has_any_scan = scanHistoryList.Any(),
+                        is_fully_scanned = isFullyScanned,
+                        is_partially_scanned = isPartiallyScanned,
+                        first_scan_time = firstScanTime,
+                        last_scan_time = lastScanTime,
+                        total_scan_events = scanHistoryList.Count,
+                        scanned_by_users = scannedByUsers.ToList()
+                    },
+                    scan_history = scanHistoryList
+                };
+
+                response.bookings.Add(bookingDetail);
+
+                // Update summary statistics
+                UpdateSummaryStatistics(response.summary, bookingDetail, totalSeatsBooked, totalSeatsScanned);
+            }
+
+            return response;
+        }
+
+        private void UpdateSummaryStatistics(
+            EventBookingSummary summary,
+            EventBookingDetail booking,
+            int totalSeatsBooked,
+            int totalSeatsScanned)
+        {
+            summary.total_bookings++;
+            summary.total_tickets_booked += totalSeatsBooked;
+            summary.total_tickets_scanned += totalSeatsScanned;
+            summary.total_tickets_remaining += (totalSeatsBooked - totalSeatsScanned);
+            summary.total_revenue += booking.final_amount;
+            summary.total_discount_given += booking.discount_amount;
+
+            if (booking.discount_amount > 0)
+                summary.total_coupons_used++;
+
+            // Booking status count
+            if (!summary.bookings_by_status.ContainsKey(booking.booking_status))
+                summary.bookings_by_status[booking.booking_status] = 0;
+            summary.bookings_by_status[booking.booking_status]++;
+
+            // Payment status count
+            if (!summary.bookings_by_payment_status.ContainsKey(booking.payment_status ?? "unknown"))
+                summary.bookings_by_payment_status[booking.payment_status ?? "unknown"] = 0;
+            summary.bookings_by_payment_status[booking.payment_status ?? "unknown"]++;
+
+            // Scan status
+            if (booking.seat_summary.is_fully_scanned)
+                summary.fully_scanned_bookings++;
+            else if (booking.seat_summary.is_partially_scanned)
+                summary.partially_scanned_bookings++;
+            else if (booking.seat_summary.total_seats_scanned == 0)
+                summary.unscanned_bookings++;
+        }
+
+        public async Task<TicketScanHistoryByEventResponse> GetTicketScanHistoryByEventIdAsync(int eventId, int pageNumber, int pageSize)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            // Calculate offset for pagination
+            int offset = (pageNumber - 1) * pageSize;
+
+            var response = new TicketScanHistoryByEventResponse();
+
+            // 1. Get Event Details
+            var eventQuery = $@"
+            SELECT 
+                e.event_id,
+                e.event_name,
+                e.event_date,
+                e.start_time,
+                e.end_time,
+                e.location
+            FROM {events} e
+            WHERE e.event_id = @EventId AND e.active = 1";
+
+            var eventDetails = await connection.QueryFirstOrDefaultAsync<EventDetails>(eventQuery, new { EventId = eventId });
+
+            if (eventDetails == null)
+            {
+                return null;
+            }
+
+            response.EventDetails = eventDetails;
+
+            // 2. Get count of total scan records for this event (for pagination)
+            var countQuery = $@"
+            SELECT COUNT(tsh.scan_id)
+            FROM {ticket_scan_history} tsh
+            INNER JOIN {booking} b ON tsh.booking_id = b.booking_id
+            WHERE b.event_id = @EventId 
+                AND b.active = 1";
+
+            var totalRecords = await connection.ExecuteScalarAsync<int>(countQuery, new { EventId = eventId });
+
+            // 3. Get paginated scan history with all required details
+            var scanHistoryQuery = $@"
+            SELECT 
+                tsh.scan_id,
+                tsh.booking_id,
+                CONCAT(u.first_name, ' ', u.last_name) AS customer_name,
+                u.email AS customer_email,
+                u.mobile AS customer_mobile,
+                bs.remaining_quantity + tsh.scanned_quantity AS previous_seat_remaining_count,
+                tsh.scanned_quantity AS scanned_count,
+                bs.remaining_quantity AS remaining_count,
+                tsh.scan_time AS last_scan_time,
+                tsh.scanned_by AS last_scanned_by,
+                CASE 
+                    WHEN bs.remaining_quantity = 0 THEN true 
+                    ELSE false 
+                END AS is_fully_scanned
+            FROM {ticket_scan_history} tsh
+            INNER JOIN {booking} b ON tsh.booking_id = b.booking_id
+            INNER JOIN {Users} u ON b.user_id = u.user_id
+            INNER JOIN {booking_seat} bs ON tsh.booking_seat_id = bs.booking_seat_id
+            WHERE b.event_id = @EventId 
+                AND b.active = 1
+                AND u.active = 1
+            ORDER BY tsh.scan_time DESC
+            LIMIT @PageSize OFFSET @Offset";
+
+            var scanHistory = await connection.QueryAsync<TicketScanHistoryDetail>(
+                scanHistoryQuery,
+                new
+                {
+                    EventId = eventId,
+                    PageSize = pageSize,
+                    Offset = offset
+                });
+
+            response.ScanHistory = new PaginatedScanHistory
+            {
+                current_page = pageNumber,
+                page_size = pageSize,
+                total_records = totalRecords,
+                total_pages = (int)Math.Ceiling(totalRecords / (double)pageSize),
+                data = scanHistory.ToList()
+            };
+
+            return response;
         }
     }
 }
