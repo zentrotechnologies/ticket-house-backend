@@ -212,4 +212,31 @@ namespace MODEL.Response
         public string last_scanned_by { get; set; }
         public bool is_fully_scanned { get; set; }
     }
+
+    public class EventBookingExportResponse
+    {
+        public int SrNo { get; set; }
+        public string EventName { get; set; }
+        public DateTime EventDate { get; set; }
+        public string EventTime { get; set; }
+        public string Location { get; set; }
+        public string BookingIsConfirmed { get; set; }
+        public string UserName { get; set; }
+        public string Email { get; set; }
+        public string Mobile { get; set; }
+        public string SeatDetails { get; set; } // Formatted as "SeatName x Quantity"
+        public int TotalSeatsBooked { get; set; }
+        public int ScannedCount { get; set; }
+        public int RemainingCount { get; set; }
+        public string CouponApplied { get; set; } // Coupon code or "No Coupon"
+        public decimal DiscountAmount { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string PaymentStatus { get; set; }
+        public DateTime BookingDate { get; set; }
+    }
+
+    public class EventBookingExportRequest
+    {
+        public int EventId { get; set; }
+    }
 }

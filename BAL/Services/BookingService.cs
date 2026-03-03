@@ -1,15 +1,18 @@
-﻿using DAL.Repository;
+﻿using ClosedXML.Excel;
+using DAL.Repository;
 using DAL.Utilities;
 using Microsoft.Extensions.Logging;
 using MODEL.Entities;
 using MODEL.Request;
 using MODEL.Response;
+using OfficeOpenXml;
+using PreMailer.Net;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using PreMailer.Net;
 
 namespace BAL.Services
 {
@@ -50,6 +53,7 @@ namespace BAL.Services
         /// </summary>
         Task<CommonResponseModel<EventBookingHistoryResponse>> GetEventBookingHistoryAsync(int eventId);
         Task<CommonResponseModel<TicketScanHistoryByEventResponse>> GetTicketScanHistoryByEventIdAsync(int eventId, int pageNumber = 1, int pageSize = 10);
+        Task<byte[]> ExportEventBookingDetailsToExcelAsync(int eventId);
     }
     public class BookingService: IBookingService
     {
@@ -2929,6 +2933,139 @@ namespace BAL.Services
             }
 
             return response;
+        }
+
+        public async Task<byte[]> ExportEventBookingDetailsToExcelAsync(int eventId)
+        {
+            try
+            {
+                // Fetch the data
+                var bookingData = await _bookingRepository.GetEventBookingDetailsForExportAsync(eventId);
+                var bookingList = bookingData.ToList();
+
+                if (!bookingList.Any())
+                {
+                    throw new Exception("No confirmed bookings found for this event");
+                }
+
+                // Create Excel file using ClosedXML
+                using (var workbook = new XLWorkbook())
+                {
+                    var worksheet = workbook.Worksheets.Add("Event Bookings");
+
+                    // Get event name for the title
+                    var eventName = bookingList.FirstOrDefault()?.EventName ?? "Event";
+
+                    // Title
+                    worksheet.Cell("A1").Value = $"Booking Details - {eventName}";
+                    worksheet.Range("A1:R1").Merge();
+                    worksheet.Cell("A1").Style.Font.Bold = true;
+                    worksheet.Cell("A1").Style.Font.FontSize = 14;
+                    worksheet.Cell("A1").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                    // Add headers
+                    string[] headers = {
+                "Sr No", "Event Name", "Event Date", "Event Time", "Location",
+                "Booking Confirmed", "User Name", "Email", "Mobile",
+                "Seat Details", "Total Seats", "Scanned", "Remaining",
+                "Coupon Applied", "Discount (₹)", "Total Amount (₹)", "Payment Status", "Booking Date"
+            };
+
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        var cell = worksheet.Cell(3, i + 1);
+                        cell.Value = headers[i];
+                        cell.Style.Font.Bold = true;
+                        cell.Style.Fill.BackgroundColor = XLColor.LightGray;
+                        cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                    }
+
+                    // Add data
+                    int row = 4;
+                    foreach (var booking in bookingList)
+                    {
+                        worksheet.Cell(row, 1).Value = booking.SrNo;
+                        worksheet.Cell(row, 2).Value = booking.EventName;
+                        worksheet.Cell(row, 3).Value = booking.EventDate.ToString("dd-MMM-yyyy");
+                        worksheet.Cell(row, 4).Value = booking.EventTime;
+                        worksheet.Cell(row, 5).Value = booking.Location;
+                        worksheet.Cell(row, 6).Value = booking.BookingIsConfirmed;
+                        worksheet.Cell(row, 7).Value = booking.UserName;
+                        worksheet.Cell(row, 8).Value = booking.Email;
+                        worksheet.Cell(row, 9).Value = booking.Mobile;
+                        worksheet.Cell(row, 10).Value = booking.SeatDetails;
+                        worksheet.Cell(row, 11).Value = booking.TotalSeatsBooked;
+                        worksheet.Cell(row, 12).Value = booking.ScannedCount;
+                        worksheet.Cell(row, 13).Value = booking.RemainingCount;
+                        worksheet.Cell(row, 14).Value = booking.CouponApplied;
+                        worksheet.Cell(row, 15).Value = booking.DiscountAmount;
+                        worksheet.Cell(row, 16).Value = booking.TotalAmount;
+                        worksheet.Cell(row, 17).Value = booking.PaymentStatus;
+                        worksheet.Cell(row, 18).Value = booking.BookingDate.ToString("dd-MMM-yyyy HH:mm");
+
+                        // Format number columns
+                        worksheet.Cell(row, 11).Style.NumberFormat.Format = "#,##0";
+                        worksheet.Cell(row, 12).Style.NumberFormat.Format = "#,##0";
+                        worksheet.Cell(row, 13).Style.NumberFormat.Format = "#,##0";
+                        worksheet.Cell(row, 15).Style.NumberFormat.Format = "#,##0.00";
+                        worksheet.Cell(row, 16).Style.NumberFormat.Format = "#,##0.00";
+
+                        // Color coding for scan status
+                        if (booking.RemainingCount == 0)
+                        {
+                            worksheet.Cell(row, 13).Style.Fill.BackgroundColor = XLColor.LightGreen;
+                        }
+                        else if (booking.ScannedCount > 0)
+                        {
+                            worksheet.Cell(row, 13).Style.Fill.BackgroundColor = XLColor.LightYellow;
+                        }
+
+                        row++;
+                    }
+
+                    // Add summary row
+                    row++;
+                    worksheet.Cell(row, 1).Value = "SUMMARY";
+                    worksheet.Cell(row, 1).Style.Font.Bold = true;
+                    worksheet.Range(row, 1, row, 5).Merge();
+
+                    worksheet.Cell(row, 10).Value = "Total Bookings:";
+                    worksheet.Cell(row, 11).Value = bookingList.Count;
+
+                    worksheet.Cell(row, 12).Value = "Total Seats:";
+                    worksheet.Cell(row, 13).Value = bookingList.Sum(b => b.TotalSeatsBooked);
+
+                    worksheet.Cell(row, 14).Value = "Total Scanned:";
+                    worksheet.Cell(row, 15).Value = bookingList.Sum(b => b.ScannedCount);
+
+                    worksheet.Cell(row, 16).Value = "Total Revenue:";
+                    worksheet.Cell(row, 17).Value = bookingList.Sum(b => b.TotalAmount);
+
+                    // Make summary row bold
+                    worksheet.Range(row, 10, row, 17).Style.Font.Bold = true;
+
+                    // Auto-fit columns
+                    worksheet.Columns().AdjustToContents();
+
+                    // Set column widths for better readability
+                    worksheet.Column(10).Width = 50; // Seat Details column wider
+                    worksheet.Column(2).Width = 30; // Event Name
+                    worksheet.Column(7).Width = 25; // User Name
+                    worksheet.Column(8).Width = 30; // Email
+
+                    // Save to memory stream
+                    using (var stream = new MemoryStream())
+                    {
+                        workbook.SaveAs(stream);
+                        return stream.ToArray();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error exporting event booking details for EventId: {eventId}");
+                throw;
+            }
         }
     }
 }
