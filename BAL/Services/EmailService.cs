@@ -394,11 +394,14 @@ namespace BAL.Services
 
                 using (var client = new SmtpClient(_configuration.SmtpServer, _configuration.SmtpPort))
                 {
-                    client.EnableSsl = _configuration.EnableSsl;
-                    client.Credentials = new NetworkCredential(_configuration.SmtpUsername, _configuration.SmtpPassword);
-                    client.Timeout = 30000;
                     client.DeliveryMethod = SmtpDeliveryMethod.Network;
-                    client.UseDefaultCredentials = false;
+
+                    client.EnableSsl = _configuration.EnableSsl;
+                    client.UseDefaultCredentials = false; 
+                    client.Credentials = new NetworkCredential(_configuration.SmtpUsername, _configuration.SmtpPassword);
+                    client.EnableSsl = _configuration.EnableSsl;
+                    client.Timeout = 30000;
+                    
 
                     var mailMessage = new MailMessage
                     {
