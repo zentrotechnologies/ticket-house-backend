@@ -58,6 +58,7 @@ namespace DAL.Repository
         /// </summary>
         Task<EventBookingHistoryResponse> GetEventBookingHistoryAsync(int eventId);
         Task<TicketScanHistoryByEventResponse> GetTicketScanHistoryByEventIdAsync(int eventId, int pageNumber, int pageSize);
+        Task<IEnumerable<EventBookingExportResponse>> GetEventBookingDetailsForExportAsync(int eventId);
     }
     public class BookingRepository: IBookingRepository
     {
@@ -2345,6 +2346,59 @@ namespace DAL.Repository
             };
 
             return response;
+        }
+
+        public async Task<IEnumerable<EventBookingExportResponse>> GetEventBookingDetailsForExportAsync(int eventId)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            var query = $@"
+            WITH booking_seat_summary AS (
+                SELECT 
+                    bs.booking_id,
+                    STRING_AGG(CONCAT(esti.seat_name, ' x ', bs.quantity), ', ') AS seat_details,
+                    SUM(bs.quantity) AS total_seats_booked,
+                    SUM(bs.scanned_quantity) AS total_scanned,
+                    SUM(bs.quantity - bs.scanned_quantity) AS total_remaining
+                FROM {booking_seat} bs
+                INNER JOIN {event_seat_type_inventory} esti 
+                    ON bs.event_seat_type_inventory_id = esti.event_seat_type_inventory_id
+                WHERE bs.active = 1
+                GROUP BY bs.booking_id
+            )
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY b.created_on DESC) AS SrNo,
+                e.event_name AS EventName,
+                e.event_date AS EventDate,
+                CONCAT(
+                    TO_CHAR(e.start_time, 'HH12:MI AM'), 
+                    ' - ', 
+                    TO_CHAR(e.end_time, 'HH12:MI AM')
+                ) AS EventTime,
+                e.location AS Location,
+                'Yes' AS BookingIsConfirmed,
+                CONCAT(u.first_name, ' ', u.last_name) AS UserName,
+                u.email AS Email,
+                u.mobile AS Mobile,
+                COALESCE(bss.seat_details, '') AS SeatDetails,
+                COALESCE(bss.total_seats_booked, 0) AS TotalSeatsBooked,
+                COALESCE(bss.total_scanned, 0) AS ScannedCount,
+                COALESCE(bss.total_remaining, 0) AS RemainingCount,
+                COALESCE(b.coupon_code_applied, 'No Coupon') AS CouponApplied,
+                COALESCE(b.discount_amount, 0) AS DiscountAmount,
+                b.final_amount AS TotalAmount,
+                b.payment_status AS PaymentStatus,
+                b.created_on AS BookingDate
+            FROM {booking} b
+            INNER JOIN {events} e ON b.event_id = e.event_id AND e.active = 1
+            INNER JOIN {Users} u ON b.user_id = u.user_id AND u.active = 1
+            LEFT JOIN booking_seat_summary bss ON b.booking_id = bss.booking_id
+            WHERE b.event_id = @EventId 
+                AND b.status = 'confirmed'
+                AND b.active = 1
+            ORDER BY b.created_on DESC";
+
+            return await connection.QueryAsync<EventBookingExportResponse>(query, new { EventId = eventId });
         }
     }
 }

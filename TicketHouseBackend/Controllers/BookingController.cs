@@ -1,4 +1,5 @@
 ﻿using BAL.Services;
+using DAL.Repository;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,15 +17,18 @@ namespace TicketHouseBackend.Controllers
         private readonly IBookingService _bookingService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IEmailService _emailService;
+        private readonly IEventDetailsRepository _eventDetailsRepository;
 
         public BookingController(
             IBookingService bookingService,
             IHttpContextAccessor httpContextAccessor,
-            IEmailService emailService)
+            IEmailService emailService,
+            IEventDetailsRepository eventDetailsRepository)
         {
             _bookingService = bookingService;
             _httpContextAccessor = httpContextAccessor;
             _emailService = emailService;
+            _eventDetailsRepository = eventDetailsRepository;
         }
 
         [HttpGet("GetAvailableSeats/{eventId}")]
@@ -1126,6 +1130,56 @@ namespace TicketHouseBackend.Controllers
             else
             {
                 return StatusCode(500, result);
+            }
+        }
+
+        [HttpGet("ExportEventBookingDetails/{eventId}")]
+        [AllowAnonymous] // Adjust authorization as needed
+        public async Task<IActionResult> ExportEventBookingDetails(int eventId)
+        {
+            try
+            {
+                if (eventId <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        Status = "Failure",
+                        Message = "Valid event ID is required"
+                    });
+                }
+
+                // Optional: Check if user has permission to export this event's data
+                var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+                if (currentUserRole != "Admin" && currentUserRole != "Organizer")
+                {
+                    // Add additional check for organizer ownership if needed
+                }
+
+                var excelBytes = await _bookingService.ExportEventBookingDetailsToExcelAsync(eventId);
+
+                // Get event name for filename
+                var eventName = await _eventDetailsRepository.GetEventByIdAsync(eventId);
+                string fileName = $"Event_{eventId}_Bookings_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+                if (eventName != null)
+                {
+                    fileName = $"{eventName.event_name}_Bookings_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                    fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
+                }
+
+                return File(
+                    excelBytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName
+                );
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Status = "Failure",
+                    Message = $"Error exporting booking details: {ex.Message}"
+                });
             }
         }
     }
