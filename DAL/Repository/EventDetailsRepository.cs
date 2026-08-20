@@ -53,6 +53,7 @@ namespace DAL.Repository
         Task<int> DeleteEventSeatTypeAsync(int seatTypeId, string updatedBy);
         Task<int> DeleteAllEventSeatTypesAsync(int eventId, string updatedBy);
         Task<IEnumerable<ActiveEventResponse>> GetActiveEventsByUserIdAsync(string userId);
+        Task<PagedResponse<List<AdminEventResponse>>> GetPaginatedAdminEventsAsync(int pageNumber, int pageSize, string searchText, string status, DateTime? fromDate, DateTime? toDate);
     }
     public class EventDetailsRepository: IEventDetailsRepository
     {
@@ -863,7 +864,7 @@ namespace DAL.Repository
             var query = $@"
             SELECT * FROM {event_seat_type_inventory} 
             WHERE event_id = @EventId AND active = 1 
-            ORDER BY price DESC";
+            ORDER BY price ASC";
 
             return await connection.QueryAsync<EventSeatTypeInventoryModel>(query, new { EventId = eventId });
         }
@@ -1023,6 +1024,104 @@ namespace DAL.Repository
             }
 
             return eventList;
+        }
+
+        public async Task<PagedResponse<List<AdminEventResponse>>> GetPaginatedAdminEventsAsync(int pageNumber, int pageSize, string searchText, string status, DateTime? fromDate, DateTime? toDate)
+        {
+            using var connection = _dbConnection.GetConnection();
+
+            var offset = (pageNumber - 1) * pageSize;
+            var conditions = new List<string> { "e.active = 1" };
+            var parameters = new DynamicParameters();
+
+            // Build conditions
+            if (!string.IsNullOrEmpty(searchText))
+            {
+                conditions.Add("(e.event_name ILIKE @searchText OR e.location ILIKE @searchText OR e.event_description ILIKE @searchText)");
+                parameters.Add("@searchText", $"%{searchText}%");
+            }
+
+            if (!string.IsNullOrEmpty(status))
+            {
+                conditions.Add("e.status = @status");
+                parameters.Add("@status", status);
+            }
+
+            if (fromDate.HasValue)
+            {
+                conditions.Add("e.event_date >= @fromDate");
+                parameters.Add("@fromDate", fromDate.Value.Date);
+            }
+
+            if (toDate.HasValue)
+            {
+                conditions.Add("e.event_date <= @toDate");
+                parameters.Add("@toDate", toDate.Value.Date.AddDays(1).AddSeconds(-1));
+            }
+
+            var whereClause = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
+
+            // Get total count
+            var countQuery = $@"
+            SELECT COUNT(*) FROM {events} e
+            {whereClause}";
+
+            var totalCount = await connection.ExecuteScalarAsync<int>(countQuery, parameters);
+
+            // Get paginated events with organizer name from users table
+            var query = $@"
+            SELECT 
+                e.*,
+                u.first_name || ' ' || u.last_name AS organizer_name,
+                u.email AS organizer_email,
+                u.mobile AS organizer_mobile,
+                u.country_code AS organizer_country_code
+            FROM {events} e
+            LEFT JOIN {EventOrganizer} eo ON e.organizer_id = eo.organizer_id AND eo.active = 1
+            LEFT JOIN {Users} u ON eo.user_id = u.user_id AND u.active = 1
+            {whereClause}
+            ORDER BY e.event_date DESC, e.created_at DESC
+            LIMIT @pageSize OFFSET @offset";            
+
+            parameters.Add("@pageSize", pageSize);
+            parameters.Add("@offset", offset);
+
+            var eventsList = await connection.QueryAsync<AdminEventResponse>(query, parameters);
+
+            // Get artists and galleries for each event
+            var result = new List<AdminEventResponse>();
+
+            //foreach (var eventItem in eventsList)
+            //{
+            //    var artists = await GetEventArtistsByEventIdAsync(eventItem.event_id);
+            //    var galleries = await GetEventGalleriesByEventIdAsync(eventItem.event_id);
+
+            //    eventItem.artists = artists.ToList();
+            //    eventItem.galleries = galleries.ToList();
+
+            //    result.Add(eventItem);
+            //}
+
+            // And when assigning, use the new property names:
+            foreach (var eventItem in eventsList)
+            {
+                var artists = await GetEventArtistsByEventIdAsync(eventItem.event_id);
+                var galleries = await GetEventGalleriesByEventIdAsync(eventItem.event_id);
+
+                eventItem.artist_list = artists.ToList();  // Changed from artists to artist_list
+                eventItem.gallery_list = galleries.ToList();  // Changed from galleries to gallery_list
+
+                result.Add(eventItem);
+            }
+
+            return new PagedResponse<List<AdminEventResponse>>
+            {
+                Data = result,
+                TotalCount = totalCount,
+                CurrentPage = pageNumber,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
         }
     }
 }

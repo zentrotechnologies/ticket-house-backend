@@ -1282,7 +1282,8 @@ namespace BAL.Services
                 }
 
                 // Get convenience fee percentage from event
-                decimal convenienceFeePercentage = eventDetails.convenience_fee ?? 6m;
+                //decimal convenienceFeePercentage = eventDetails.convenience_fee ?? 6m;
+                decimal convenienceFeePercentage = eventDetails.convenience_fee ?? 0m;  // Changed default to 0
 
                 // Calculate fees
                 var fees = FeeCalculator.CalculateFees(totalAmount, convenienceFeePercentage);

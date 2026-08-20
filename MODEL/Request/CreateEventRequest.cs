@@ -51,6 +51,16 @@ namespace MODEL.Request
         public DateTime? ToDate { get; set; }
     }
 
+    public class AdminEventPaginationRequest
+    {
+        public int PageNumber { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string SearchText { get; set; } = "";
+        public string Status { get; set; } = "";
+        public DateTime? FromDate { get; set; }
+        public DateTime? ToDate { get; set; }
+    }
+
     // Artist upload request
     //public class ArtistUploadRequest
     //{

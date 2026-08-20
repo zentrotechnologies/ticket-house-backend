@@ -34,6 +34,7 @@ namespace BAL.Services
 
         // Delete operations
         Task<CommonResponseModel<bool>> DeleteEventWithArtistsAndGalleriesAsync(int eventId, string updatedBy);
+        Task<PagedResponse<List<AdminEventResponse>>> GetPaginatedAdminEventsAsync(AdminEventPaginationRequest request);
     }
     public class EventArtistGalleryService: IEventArtistGalleryService
     {
@@ -1078,6 +1079,39 @@ namespace BAL.Services
             }
 
             return Guid.Empty;
+        }
+
+        public async Task<PagedResponse<List<AdminEventResponse>>> GetPaginatedAdminEventsAsync(AdminEventPaginationRequest request)
+        {
+            var response = new PagedResponse<List<AdminEventResponse>>();
+            try
+            {
+                var result = await _eventDetailsRepository.GetPaginatedAdminEventsAsync(
+                    request.PageNumber,
+                    request.PageSize,
+                    request.SearchText,
+                    request.Status,
+                    request.FromDate,
+                    request.ToDate
+                );
+
+                response.Status = "Success";
+                response.Message = "Events fetched successfully";
+                response.ErrorCode = "0";
+                response.Data = result.Data;
+                response.TotalCount = result.TotalCount;
+                response.TotalPages = result.TotalPages;
+                response.CurrentPage = result.CurrentPage;
+                response.PageSize = result.PageSize;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Message = $"Error retrieving events: {ex.Message}";
+                response.ErrorCode = "1";
+            }
+
+            return response;
         }
     }
 }

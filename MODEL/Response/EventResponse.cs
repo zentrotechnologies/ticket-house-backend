@@ -58,4 +58,50 @@ namespace MODEL.Response
         public List<EventMediaModel> EventMedia { get; set; } = new List<EventMediaModel>();
         public List<EventSeatTypeInventoryModel> SeatTypes { get; set; } = new List<EventSeatTypeInventoryModel>();
     }
+
+    public class AdminEventResponse
+    {
+        // Event Details (from events table)
+        public int event_id { get; set; }
+        public Guid organizer_id { get; set; }
+        public string event_name { get; set; }
+        public string event_description { get; set; }
+        public DateTime event_date { get; set; }
+        public TimeSpan start_time { get; set; }
+        public TimeSpan end_time { get; set; }
+        public int total_duration_minutes { get; set; }
+        public string location { get; set; }
+        public string full_address { get; set; }
+        public string geo_map_url { get; set; }
+        public decimal? latitude { get; set; }
+        public decimal? longitude { get; set; }
+        public string language { get; set; }
+        public int event_category_id { get; set; }
+        public string banner_image { get; set; }
+        public string gallery_media { get; set; }
+        public int? age_limit { get; set; }
+        public string artists_json { get; set; }  // Renamed to avoid conflict
+        public string terms_and_conditions { get; set; }
+        public decimal? min_price { get; set; }
+        public decimal? max_price { get; set; }
+        public bool is_featured { get; set; }
+        public string status { get; set; }
+        public int? no_of_seats { get; set; }
+        public string created_by { get; set; }
+        public DateTime created_at { get; set; }
+        public string updated_by { get; set; }
+        public DateTime? updated_at { get; set; }
+        public int active { get; set; }
+        public decimal? convenience_fee { get; set; }
+
+        // Organizer Info from Users table
+        public string organizer_name { get; set; }
+        public string organizer_email { get; set; }
+        public string organizer_mobile { get; set; }
+        public string organizer_country_code { get; set; }
+
+        // Related data (Lists)
+        public List<EventArtistModel> artist_list { get; set; } = new List<EventArtistModel>();  // Renamed to artist_list
+        public List<EventGalleryModel> gallery_list { get; set; } = new List<EventGalleryModel>();  // Renamed to gallery_list
+    }
 }

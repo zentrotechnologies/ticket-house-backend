@@ -11,7 +11,8 @@ namespace DAL.Utilities
         private const decimal GST_PERCENTAGE = 18m; // 18% GST (fixed)
 
         public static (decimal convenienceFee, decimal gstAmount, decimal finalAmount)
-            CalculateFees(decimal baseAmount, decimal convenienceFeePercentage = 6m)
+            //CalculateFees(decimal baseAmount, decimal convenienceFeePercentage = 6m)
+            CalculateFees(decimal baseAmount, decimal convenienceFeePercentage = 0m) // Changed default to 0
         {
             // Calculate convenience fee using dynamic percentage (default 6%)
             decimal convenienceFee = Math.Round(baseAmount * (convenienceFeePercentage / 100m), 2);

@@ -1091,5 +1091,25 @@ namespace TicketHouseBackend.Controllers.Masters
                 });
             }
         }
+
+        //to fetch events of all org for admin
+        [HttpPost("GetPaginatedAdminEvents")]
+        public async Task<PagedResponse<List<AdminEventResponse>>> GetPaginatedAdminEvents([FromBody] AdminEventPaginationRequest request)
+        {
+            try
+            {
+                var result = await _eventArtistGalleryService.GetPaginatedAdminEventsAsync(request);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new PagedResponse<List<AdminEventResponse>>
+                {
+                    ErrorCode = "1",
+                    Status = "Error",
+                    Message = ex.Message
+                };
+            }
+        }
     }
 }
